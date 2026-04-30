@@ -826,7 +826,7 @@ function PlatformBadge({ name }: { name: string }) {
 function PosterArt({ movie }: { movie: Movie }) {
   const [failed, setFailed] = useState(false);
 
-  if (failed) {
+  if (failed || !movie.poster) {
     return (
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,209,255,0.24),_transparent_42%),linear-gradient(160deg,_rgba(229,9,20,0.26),_rgba(5,5,5,0.96)_70%)]">
         <div className="absolute inset-x-5 top-5 text-[11px] uppercase tracking-[0.28em] text-slate-300">Letterboxd seed</div>

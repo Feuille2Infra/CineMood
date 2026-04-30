@@ -1,3 +1,5 @@
+import exportedLetterboxdData from "@/data/feuille2cedric-letterboxd-export.json";
+
 export type MoodKey = "stress" | "happiness" | "complexity" | "pace";
 
 export type Mood = Record<MoodKey, number>;
@@ -29,6 +31,20 @@ type CuratedMovie = Omit<Movie, "provider" | "matchReason" | "availability" | "c
   moodProfile: Mood;
   tags: string[];
   hook: string;
+};
+
+type RecommendationSeed = CuratedMovie & {
+  seedCountries?: string[];
+  seedPersonalRating?: number | null;
+  seedSourceLists?: string[];
+};
+
+type ExportedLetterboxdMovie = {
+  title: string;
+  year: string;
+  letterboxdUrl: string;
+  sourceLists: string[];
+  personalRating: number | null;
 };
 
 export type SearchResponse = {
@@ -698,6 +714,34 @@ const moviePersonalRatings: Record<string, number> = {
   "244786": 3.5
 };
 
+const curatedMovieKeys = new Set(curatedMovies.map((movie) => getMovieKey(movie.title, movie.year)));
+
+const importedLetterboxdMovies: RecommendationSeed[] = (exportedLetterboxdData as ExportedLetterboxdMovie[])
+  .filter((movie) => !curatedMovieKeys.has(getMovieKey(movie.title, movie.year)))
+  .map((movie) => createImportedMovie(movie));
+
+function createImportedMovie(movie: ExportedLetterboxdMovie): RecommendationSeed {
+  const sourceLists = movie.sourceLists.map(formatExportListName);
+  const ratingOutOfTen = movie.personalRating !== null ? Number((movie.personalRating * 2).toFixed(1)) : inferImportedDisplayRating(sourceLists);
+
+  return {
+    id: `lbx-${slugify(`${movie.title}-${movie.year}`)}`,
+    title: movie.title,
+    year: movie.year,
+    poster: "",
+    overview: `Imported from ${sourceLists.slice(0, 2).join(" and ")}.`,
+    hook: buildImportedHook(sourceLists, movie.personalRating),
+    providers: ["JustWatch"],
+    watchUrl: `https://www.justwatch.com/us/search?q=${encodeURIComponent(movie.title)}`,
+    rating: ratingOutOfTen,
+    moodProfile: inferImportedMoodProfile(sourceLists, movie.personalRating),
+    tags: inferImportedTags(sourceLists, movie.personalRating),
+    seedCountries: inferImportedCountries(sourceLists),
+    seedPersonalRating: movie.personalRating,
+    seedSourceLists: sourceLists
+  };
+}
+
 export function defaultRecommendations(): SearchResponse {
   return localRecommend(defaultMood, defaultPlatforms, [], defaultFilters);
 }
@@ -713,16 +757,17 @@ export function localRecommend(
   const normalizedMood = normalizeMood(mood);
   const skippedSet = new Set(skipped);
   const activePlatforms = selectedPlatforms.length ? selectedPlatforms : platforms;
+  const recommendationPool: RecommendationSeed[] = [...curatedMovies, ...importedLetterboxdMovies];
 
-  const ranked = curatedMovies
+  const ranked = recommendationPool
     .filter((movie) => !skippedSet.has(movie.id))
-    .filter((movie) => matchesCountry(getMovieCountries(movie.id), filters.country))
+    .filter((movie) => matchesCountry(getSeedCountries(movie), filters.country))
     .filter((movie) => matchesEra(movie.year, filters.era))
-    .filter((movie) => matchesObscurity(getMovieObscurity(movie.id), filters.obscurity))
+    .filter((movie) => matchesObscurity(getSeedObscurity(movie), filters.obscurity))
     .map((movie) => {
       const matchingProviders = movie.providers.filter((provider) => activePlatforms.includes(provider));
       const provider = matchingProviders[0] || movie.providers[0];
-      const obscurity = getMovieObscurity(movie.id);
+      const obscurity = getSeedObscurity(movie);
 
       const distance =
         Math.abs(movie.moodProfile.stress - normalizedMood.stress) * 1.15 +
@@ -732,9 +777,15 @@ export function localRecommend(
 
       const tagBonus = getTagBonus(movie.tags, normalizedMood);
       const obscurityBonus = 28 - Math.abs(obscurity - filters.obscurity) * 0.68;
-      const sourceBonus = getSourceBonus(movie.id, filters);
-      const personalTasteBonus = getPersonalTasteBonus(movie.id);
-      const providerBonus = selectedPlatforms.length ? (matchingProviders.length ? 18 : -26) : 0;
+      const sourceBonus = getSourceBonus(movie, filters);
+      const personalTasteBonus = getPersonalTasteBonus(movie);
+      const providerBonus = selectedPlatforms.length
+        ? matchingProviders.length
+          ? 18
+          : movie.providers.includes("JustWatch")
+            ? -4
+            : -26
+        : 0;
       const score = 140 - distance + tagBonus + providerBonus + obscurityBonus + sourceBonus + personalTasteBonus;
 
       return {
@@ -742,8 +793,8 @@ export function localRecommend(
           id: movie.id,
           title: movie.title,
           year: movie.year,
-          countries: getMovieCountries(movie.id),
-          sourceLists: getMovieSourceLists(movie.id),
+          countries: getSeedCountries(movie),
+          sourceLists: getSeedSourceLists(movie),
           poster: movie.poster,
           overview: movie.overview,
           matchReason: buildReason(movie, normalizedMood),
@@ -760,7 +811,10 @@ export function localRecommend(
     });
 
   const platformFiltered = selectedPlatforms.length
-    ? ranked.filter((entry) => entry.providers.some((provider) => activePlatforms.includes(provider)))
+    ? ranked.filter(
+        (entry) =>
+          entry.providers.includes("JustWatch") || entry.providers.some((provider) => activePlatforms.includes(provider))
+      )
     : ranked;
 
   const allMovies = selectDiverseEntries(platformFiltered, platformFiltered.length)
@@ -923,6 +977,22 @@ function getMoviePersonalRating(movieId: string) {
   return moviePersonalRatings[movieId] ?? null;
 }
 
+function getSeedCountries(movie: RecommendationSeed) {
+  return movie.seedCountries || getMovieCountries(movie.id);
+}
+
+function getSeedObscurity(movie: RecommendationSeed) {
+  return movie.seedSourceLists ? inferImportedObscurity(movie.seedSourceLists, movie.seedPersonalRating) : getMovieObscurity(movie.id);
+}
+
+function getSeedSourceLists(movie: RecommendationSeed) {
+  return movie.seedSourceLists || getMovieSourceLists(movie.id);
+}
+
+function getSeedPersonalRating(movie: RecommendationSeed) {
+  return movie.seedPersonalRating ?? getMoviePersonalRating(movie.id);
+}
+
 function matchesCountry(countries: string[], selectedCountry: string) {
   return selectedCountry === "any" ? true : countries.includes(selectedCountry);
 }
@@ -957,8 +1027,8 @@ function getEraLabel(value: string) {
   return eraOptions.find((option) => option.value === value)?.label.toLowerCase() || value;
 }
 
-function getSourceBonus(movieId: string, filters: DiscoveryFilters) {
-  const sources = getMovieSourceLists(movieId);
+function getSourceBonus(movie: RecommendationSeed, filters: DiscoveryFilters) {
+  const sources = getSeedSourceLists(movie);
   let bonus = 0;
 
   if (filters.obscurity > 60 && sources.some((source) => source.includes("Underseen"))) {
@@ -974,8 +1044,8 @@ function getSourceBonus(movieId: string, filters: DiscoveryFilters) {
   return bonus;
 }
 
-function getPersonalTasteBonus(movieId: string) {
-  const rating = getMoviePersonalRating(movieId);
+function getPersonalTasteBonus(movie: RecommendationSeed) {
+  const rating = getSeedPersonalRating(movie);
   if (rating === null) {
     return 0;
   }
@@ -997,6 +1067,193 @@ function getPersonalTasteBonus(movieId: string) {
   }
 
   return 2;
+}
+
+function getMovieKey(title: string, year: string) {
+  return `${normalizeTitle(title)}|${year}`;
+}
+
+function normalizeTitle(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function slugify(value: string) {
+  return normalizeTitle(value).replaceAll(" ", "-");
+}
+
+function inferImportedMoodProfile(sourceLists: string[], personalRating: number | null): Mood {
+  const mood: Mood = {
+    stress: 48,
+    happiness: 44,
+    complexity: 56,
+    pace: 46
+  };
+
+  for (const source of sourceLists) {
+    const normalized = source.toLowerCase();
+
+    if (normalized.includes("cigarets")) {
+      mood.stress += 6;
+      mood.happiness -= 10;
+      mood.complexity += 12;
+      mood.pace -= 8;
+    }
+    if (normalized.includes("top 100")) {
+      mood.complexity += 10;
+    }
+    if (normalized.includes("2025") || normalized.includes("2026") || normalized.includes("2024")) {
+      mood.pace += 6;
+    }
+    if (normalized.includes("tarkovsky") || normalized.includes("bergman") || normalized.includes("bresson")) {
+      mood.complexity += 24;
+      mood.pace -= 18;
+    }
+    if (normalized.includes("scorsese") || normalized.includes("ridley scott") || normalized.includes("mission impossible")) {
+      mood.stress += 16;
+      mood.pace += 18;
+    }
+    if (normalized.includes("pixar") || normalized.includes("ghibli")) {
+      mood.happiness += 18;
+      mood.stress -= 12;
+    }
+    if (normalized.includes("bong joon-ho")) {
+      mood.stress += 12;
+      mood.complexity += 14;
+    }
+    if (normalized.includes("underseen")) {
+      mood.complexity += 12;
+      mood.pace -= 8;
+    }
+  }
+
+  if (personalRating !== null) {
+    if (personalRating >= 4) {
+      mood.happiness += 8;
+      mood.complexity += 6;
+    } else if (personalRating <= 1.5) {
+      mood.happiness -= 14;
+    }
+  }
+
+  return {
+    stress: clamp(mood.stress),
+    happiness: clamp(mood.happiness),
+    complexity: clamp(mood.complexity),
+    pace: clamp(mood.pace)
+  };
+}
+
+function inferImportedTags(sourceLists: string[], personalRating: number | null) {
+  const tags = new Set<string>(["letterboxd-import"]);
+
+  for (const source of sourceLists) {
+    const normalized = source.toLowerCase();
+
+    if (normalized.includes("cigarets")) tags.add("smoky");
+    if (normalized.includes("top")) tags.add("favorite");
+    if (normalized.includes("2025") || normalized.includes("2026") || normalized.includes("2024")) tags.add("recent-watch");
+    if (normalized.includes("tarkovsky") || normalized.includes("bergman") || normalized.includes("bresson")) tags.add("slow");
+    if (normalized.includes("scorsese") || normalized.includes("ridley scott")) tags.add("intense");
+    if (normalized.includes("pixar") || normalized.includes("ghibli")) tags.add("heartfelt");
+    if (normalized.includes("bong joon-ho")) tags.add("thriller");
+  }
+
+  if (personalRating !== null && personalRating >= 4) {
+    tags.add("favorite");
+  }
+
+  return [...tags];
+}
+
+function inferImportedCountries(sourceLists: string[]) {
+  const countries = new Set<string>();
+
+  for (const source of sourceLists) {
+    const normalized = source.toLowerCase();
+
+    if (normalized.includes("bong joon-ho")) countries.add("KR");
+    if (normalized.includes("tarkovsky")) countries.add("SU");
+    if (normalized.includes("bergman")) countries.add("SE");
+    if (normalized.includes("godard") || normalized.includes("kechiche") || normalized.includes("guillaume brac")) countries.add("FR");
+    if (normalized.includes("ghibli")) countries.add("JP");
+    if (normalized.includes("pixar") || normalized.includes("scorsese") || normalized.includes("mission impossible")) countries.add("US");
+    if (normalized.includes("pasolini")) countries.add("IT");
+  }
+
+  return countries.size ? [...countries] : ["US"];
+}
+
+function inferImportedObscurity(sourceLists: string[], personalRating: number | null) {
+  let obscurity = 44;
+
+  for (const source of sourceLists) {
+    const normalized = source.toLowerCase();
+
+    if (normalized.includes("top 100")) obscurity += 10;
+    if (normalized.includes("cigarets")) obscurity += 14;
+    if (normalized.includes("null-")) obscurity += 10;
+    if (normalized.includes("issa")) obscurity += 8;
+    if (normalized.includes("2025") || normalized.includes("2026")) obscurity -= 4;
+    if (normalized.includes("pixar") || normalized.includes("mission impossible")) obscurity -= 12;
+  }
+
+  if (personalRating !== null && personalRating >= 4) {
+    obscurity += 4;
+  }
+
+  return clamp(obscurity);
+}
+
+function inferImportedDisplayRating(sourceLists: string[]) {
+  const obscureBias = inferImportedObscurity(sourceLists, null);
+  return obscureBias > 60 ? 7.8 : 7.2;
+}
+
+function buildImportedHook(sourceLists: string[], personalRating: number | null) {
+  const lead = sourceLists[0] || "your Letterboxd export";
+
+  if (personalRating !== null && personalRating >= 4) {
+    return `One of your stronger Letterboxd picks, anchored by ${lead}.`;
+  }
+
+  return `Pulled from ${lead} and tuned from your exported lists.`;
+}
+
+function formatExportListName(value: string) {
+  const normalized = value.toLowerCase();
+
+  if (normalized === "top-100") return "Feuille2Cedric Top 100";
+  if (normalized === "cigarets") return "Feuille2Cedric Cigarets";
+  if (normalized === "2025") return "Feuille2Cedric 2025";
+  if (normalized === "2024") return "Feuille2Cedric 2024";
+  if (normalized === "2026") return "Feuille2Cedric 2026";
+  if (normalized === "50-films-pour-lucas") return "50 Films pour Lucas";
+  if (normalized === "tiktok-guess-the-movie") return "TikTok Guess the Movie";
+  if (normalized === "top-bong-joon-ho") return "Top Bong Joon-ho";
+  if (normalized === "top-martin-scorsese") return "Top Martin Scorsese";
+  if (normalized === "top-ridley-scott") return "Top Ridley Scott";
+  if (normalized === "top-pixar") return "Top Pixar";
+  if (normalized === "top-andrei-tarkovsky") return "Top Andrei Tarkovsky";
+  if (normalized === "top-ingmar-bergman") return "Top Ingmar Bergman";
+  if (normalized === "top-robert-bresson") return "Top Robert Bresson";
+  if (normalized === "top-jean-luc-godard") return "Top Jean-Luc Godard";
+  if (normalized === "top-pier-paolo-pasolini") return "Top Pier Paolo Pasolini";
+  if (normalized === "top-ghibli") return "Top Ghibli";
+  if (normalized === "top-guillaume-brac") return "Top Guillaume Brac";
+  if (normalized === "100-movies-with-issa") return "100 Movies with Issa";
+  if (normalized === "100-movies-with-issa-v2") return "100 Movies with Issa v2";
+  if (normalized === "alien-movies-ranking") return "Alien Movies Ranking";
+  if (normalized === "collection-dvd-blu-ray-4k") return "Collection DVD Blu-ray 4K";
+
+  return value
+    .split("-")
+    .map((part) => (part ? `${part[0].toUpperCase()}${part.slice(1)}` : part))
+    .join(" ");
 }
 
 function matchesObscurity(movieObscurity: number, selectedObscurity: number) {
