@@ -9,7 +9,7 @@ import {
 } from "framer-motion";
 import { Clapperboard, Loader2, Play, Search, Shuffle, Sparkles, ThumbsDown } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   countryOptions,
   defaultFilters,
