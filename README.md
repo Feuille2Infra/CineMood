@@ -68,8 +68,7 @@ The production image uses Next.js standalone output and listens on port `3000`.
 
 Static deployment is handled by `.github/workflows/pages.yml` on every push to `main`.
 
-GitHub Pages does not run Next.js API routes. For this temporary deployment target, Magic Search uses the client-side fallback recommender. The server recommendation route is parked in `server/recommend-route.ts` for a future Node/Vercel/container deployment.
-
+GitHub Pages does not run Next.js API routes. For this deployment target, Magic Search uses the client-side recommender from `lib/recommendation-engine.ts`, which ranks a larger curated catalog from the slider values and selected platforms. The server-side handler remains in `server/recommend-route.ts` for a future Node/Vercel/container deployment.
 Expected URL:
 
 ```text

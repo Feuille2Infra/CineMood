@@ -5,26 +5,15 @@ import { AnimatePresence, motion, useMotionValue, useTransform } from "framer-mo
 import { Clapperboard, Loader2, Play, Search, Sparkles, ThumbsDown } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useMemo, useState } from "react";
-
-type MoodKey = "stress" | "happiness" | "complexity" | "pace";
-
-type Movie = {
-  id: string;
-  title: string;
-  year: string;
-  poster: string;
-  overview: string;
-  matchReason: string;
-  provider: string;
-  providerLogo?: string;
-  watchUrl: string;
-  rating: number;
-};
-
-type SearchResponse = {
-  query: string;
-  movies: Movie[];
-};
+import {
+  defaultMood,
+  defaultRecommendations,
+  localRecommend,
+  platforms,
+  type MoodKey,
+  type Movie,
+  type SearchResponse
+} from "@/lib/recommendation-engine";
 
 const sliders: Array<{ key: MoodKey; label: string; color: string; low: string; high: string }> = [
   { key: "stress", label: "Stress", color: "#E50914", low: "Calm", high: "Intense" },
@@ -33,55 +22,14 @@ const sliders: Array<{ key: MoodKey; label: string; color: string; low: string; 
   { key: "pace", label: "Pace", color: "#00D1FF", low: "Slow", high: "Fast" }
 ];
 
-const platforms = ["Netflix", "Disney+", "Prime Video", "Max", "Hulu", "Apple TV+"];
 const useStaticRecommendations = process.env.NEXT_PUBLIC_STATIC_EXPORT === "true";
-
-const initialMovies: Movie[] = [
-  {
-    id: "603",
-    title: "The Matrix",
-    year: "1999",
-    poster: "https://image.tmdb.org/t/p/w780/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg",
-    overview: "A hacker discovers reality is far stranger and more dangerous than it appears.",
-    matchReason: "High pace, layered plot, neon intensity.",
-    provider: "Max",
-    watchUrl: "https://www.justwatch.com/us/movie/the-matrix",
-    rating: 8.2
-  },
-  {
-    id: "496243",
-    title: "Parasite",
-    year: "2019",
-    poster: "https://image.tmdb.org/t/p/w780/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg",
-    overview: "A dark social thriller where one family's plan turns into a volatile collision.",
-    matchReason: "Sharp tension with complex emotional turns.",
-    provider: "Hulu",
-    watchUrl: "https://www.justwatch.com/us/movie/parasite-2019",
-    rating: 8.5
-  },
-  {
-    id: "13",
-    title: "Forrest Gump",
-    year: "1994",
-    poster: "https://image.tmdb.org/t/p/w780/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg",
-    overview: "A gentle, sweeping life story full of warmth, loss, and unexpected history.",
-    matchReason: "Bright emotional lift with a relaxed pace.",
-    provider: "Netflix",
-    watchUrl: "https://www.justwatch.com/us/movie/forrest-gump",
-    rating: 8.4
-  }
-];
+const initialRecommendations = defaultRecommendations();
 
 export default function Home() {
-  const [mood, setMood] = useState<Record<MoodKey, number>>({
-    stress: 42,
-    happiness: 70,
-    complexity: 58,
-    pace: 66
-  });
+  const [mood, setMood] = useState<Record<MoodKey, number>>(defaultMood);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(["Netflix", "Prime Video", "Max"]);
-  const [movies, setMovies] = useState<Movie[]>(initialMovies);
-  const [query, setQuery] = useState("smart sci-fi thrillers with emotional payoff");
+  const [movies, setMovies] = useState<Movie[]>(initialRecommendations.movies);
+  const [query, setQuery] = useState(initialRecommendations.query);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [skipped, setSkipped] = useState<string[]>([]);
@@ -121,6 +69,7 @@ export default function Home() {
       const data = localRecommend(mood, selectedPlatforms, skipped);
       setMovies(data.movies);
       setQuery(data.query);
+      setError("Live APIs unavailable, using curated mood matching.");
     } finally {
       setLoading(false);
     }
@@ -278,26 +227,6 @@ export default function Home() {
   );
 }
 
-function localRecommend(mood: Record<MoodKey, number>, selectedPlatforms: string[], skipped: string[]): SearchResponse {
-  const skippedSet = new Set(skipped);
-  const preferredPlatforms = selectedPlatforms.length ? selectedPlatforms : platforms;
-  const query = `${mood.happiness > 60 ? "uplifting" : "moody"} ${
-    mood.pace > 60 ? "fast-paced" : "slow-burn"
-  } films with ${mood.complexity > 60 ? "layered plots" : "clear emotional arcs"}`;
-
-  const ranked = initialMovies
-    .filter((movie) => !skippedSet.has(movie.id))
-    .map((movie, index) => ({
-      ...movie,
-      provider: preferredPlatforms.includes(movie.provider) ? movie.provider : preferredPlatforms[index % preferredPlatforms.length],
-      matchReason: `${mood.stress > 65 ? "Tense" : "Balanced"}, ${
-        mood.happiness > 60 ? "bright" : "darker"
-      }, ${mood.complexity > 60 ? "layered" : "direct"} mood match.`
-    }));
-
-  return { query, movies: ranked };
-}
-
 function MovieCard({ movie, mobile = false, onSkip }: { movie: Movie; mobile?: boolean; onSkip?: () => void }) {
   return (
     <motion.article
@@ -308,8 +237,7 @@ function MovieCard({ movie, mobile = false, onSkip }: { movie: Movie; mobile?: b
       transition={{ type: "spring", stiffness: 260, damping: 24 }}
     >
       <div className="relative aspect-[2/3] w-full">
-        <Image alt={`${movie.title} poster`} className="object-cover" fill sizes="(max-width: 768px) 90vw, 260px" src={movie.poster} />
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/25 to-transparent" />
+        <PosterArt movie={movie} />
         <div
           className={`absolute left-3 top-3 flex items-center gap-2 rounded-full bg-black/70 px-3 py-1 text-xs font-bold text-white backdrop-blur transition ${
             mobile
@@ -326,7 +254,9 @@ function MovieCard({ movie, mobile = false, onSkip }: { movie: Movie; mobile?: b
           <div className="flex items-end justify-between gap-3">
             <div className="min-w-0">
               <h3 className="truncate text-2xl font-black text-white">{movie.title}</h3>
-              <p className="text-sm text-slate-300">{movie.year} - {movie.rating.toFixed(1)}</p>
+              <p className="text-sm text-slate-300">
+                {movie.year} - {movie.rating.toFixed(1)}
+              </p>
             </div>
           </div>
           <p className="mt-3 line-clamp-3 text-sm text-slate-300 opacity-0 transition group-hover:opacity-100 sm:opacity-100">
@@ -355,5 +285,38 @@ function MovieCard({ movie, mobile = false, onSkip }: { movie: Movie; mobile?: b
         </div>
       </div>
     </motion.article>
+  );
+}
+
+function PosterArt({ movie }: { movie: Movie }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,209,255,0.28),_transparent_42%),linear-gradient(160deg,_rgba(229,9,20,0.22),_rgba(5,5,5,0.95)_68%)]">
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
+        <div className="absolute inset-x-4 top-4 rounded-full border border-white/10 bg-black/35 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-slate-300">
+          Curated pick
+        </div>
+        <div className="absolute inset-x-4 bottom-20">
+          <p className="text-3xl font-black leading-tight text-white">{movie.title}</p>
+          <p className="mt-2 text-sm text-slate-300">{movie.overview}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Image
+        alt={`${movie.title} poster`}
+        className="object-cover"
+        fill
+        sizes="(max-width: 768px) 90vw, 260px"
+        src={movie.poster}
+        onError={() => setFailed(true)}
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/25 to-transparent" />
+    </>
   );
 }

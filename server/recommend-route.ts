@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
+import { localRecommend } from "@/lib/recommendation-engine";
 
 type Mood = {
   stress: number;
@@ -26,56 +27,21 @@ type MovieResult = {
   rating: number;
 };
 
-const fallbackMovies: MovieResult[] = [
-  {
-    id: "603",
-    title: "The Matrix",
-    year: "1999",
-    poster: "https://image.tmdb.org/t/p/w780/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg",
-    overview: "A hacker discovers reality is far stranger and more dangerous than it appears.",
-    matchReason: "A kinetic, high-concept match for fast pacing and layered stakes.",
-    provider: "Max",
-    watchUrl: "https://www.justwatch.com/us/movie/the-matrix",
-    rating: 8.2
-  },
-  {
-    id: "496243",
-    title: "Parasite",
-    year: "2019",
-    poster: "https://image.tmdb.org/t/p/w780/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg",
-    overview: "A dark social thriller where one family's plan turns into a volatile collision.",
-    matchReason: "Tense, clever, and emotionally unpredictable without dragging.",
-    provider: "Hulu",
-    watchUrl: "https://www.justwatch.com/us/movie/parasite-2019",
-    rating: 8.5
-  },
-  {
-    id: "550",
-    title: "Fight Club",
-    year: "1999",
-    poster: "https://image.tmdb.org/t/p/w780/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
-    overview: "A restless office worker is pulled into an anarchic underground world.",
-    matchReason: "Stress-heavy, sharp-edged, and built around a twisty identity puzzle.",
-    provider: "Prime Video",
-    watchUrl: "https://www.justwatch.com/us/movie/fight-club",
-    rating: 8.4
-  }
-];
-
 export async function POST(request: Request) {
   const body = (await request.json()) as RecommendRequest;
   const mood = normalizeMood(body.mood);
   const platforms = Array.isArray(body.platforms) ? body.platforms : [];
   const skipped = new Set(Array.isArray(body.skipped) ? body.skipped : []);
+  const localResults = localRecommend(mood, platforms, [...skipped]);
 
   const querySpec = await createQuerySpec(mood, platforms);
   const movies = process.env.TMDB_API_KEY
     ? await searchTmdb(querySpec, platforms, skipped)
-    : fallbackMovies.filter((movie) => !skipped.has(movie.id));
+    : localResults.movies;
 
   return NextResponse.json({
     query: querySpec.query,
-    movies: movies.length ? movies : fallbackMovies.filter((movie) => !skipped.has(movie.id))
+    movies: movies.length ? movies : localResults.movies
   });
 }
 
