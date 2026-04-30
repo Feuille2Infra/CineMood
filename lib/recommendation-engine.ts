@@ -96,7 +96,7 @@ export const defaultFilters: DiscoveryFilters = {
   obscurity: 28
 };
 
-const defaultPlatforms = ["Netflix", "Prime Video", "Max"];
+const defaultPlatforms: string[] = [];
 const localResultLimit = 24;
 
 const curatedMovies: CuratedMovie[] = [
@@ -781,10 +781,10 @@ export function localRecommend(
       const personalTasteBonus = getPersonalTasteBonus(movie);
       const providerBonus = selectedPlatforms.length
         ? matchingProviders.length
-          ? 18
+          ? 8
           : movie.providers.includes("JustWatch")
-            ? -4
-            : -26
+            ? 0
+            : -18
         : 0;
       const score = 140 - distance + tagBonus + providerBonus + obscurityBonus + sourceBonus + personalTasteBonus;
 

@@ -37,7 +37,7 @@ const initialRecommendations = defaultRecommendations();
 export default function Home() {
   const [mood, setMood] = useState<Record<MoodKey, number>>(defaultMood);
   const [filters, setFilters] = useState<DiscoveryFilters>(defaultFilters);
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(["Netflix", "Prime Video", "Max"]);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [movies, setMovies] = useState<Movie[]>(initialRecommendations.movies);
   const [query, setQuery] = useState(initialRecommendations.query);
   const [totalMatches, setTotalMatches] = useState(initialRecommendations.totalMatches);
