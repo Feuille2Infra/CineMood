@@ -888,8 +888,8 @@ function describeMood(mood: Record<MoodKey, number>) {
 
 function describeSeedPool(filters: DiscoveryFilters) {
   if (filters.obscurity > 68) {
-    return "Seed pool: Letterboxd underseen lists, world-cinema deep cuts, and Feuille2Cedric picks.";
+    return "Seed pool: Letterboxd underseen lists, world-cinema deep cuts, and local fallback picks.";
   }
 
-  return "Seed pool: Letterboxd canon, major community lists, and Feuille2Cedric picks.";
+  return "Seed pool: Letterboxd canon, major community lists, and local fallback picks.";
 }
