@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
-import { localRecommend } from "@/lib/recommendation-engine";
+import { defaultFilters, localRecommend, type DiscoveryFilters } from "@/lib/recommendation-engine";
 
 type Mood = {
   stress: number;
@@ -13,12 +13,14 @@ type RecommendRequest = {
   mood: Mood;
   platforms: string[];
   skipped: string[];
+  filters?: DiscoveryFilters;
 };
 
 type MovieResult = {
   id: string;
   title: string;
   year: string;
+  countries: string[];
   poster: string;
   overview: string;
   matchReason: string;
@@ -33,10 +35,11 @@ export async function POST(request: Request) {
   const mood = normalizeMood(body.mood);
   const platforms = Array.isArray(body.platforms) ? body.platforms : [];
   const skipped = new Set(Array.isArray(body.skipped) ? body.skipped : []);
-  const localResults = localRecommend(mood, platforms, [...skipped]);
+  const filters = normalizeFilters(body.filters);
+  const localResults = localRecommend(mood, platforms, [...skipped], filters);
   const canUseLiveDiscovery = Boolean(process.env.TMDB_API_KEY) && (platforms.length === 0 || Boolean(process.env.WATCHMODE_API_KEY));
 
-  const querySpec = await createQuerySpec(mood, platforms);
+  const querySpec = await createQuerySpec(mood, platforms, filters);
   const movies = canUseLiveDiscovery
     ? await searchTmdb(querySpec, platforms, skipped)
     : localResults.movies;
@@ -60,8 +63,16 @@ function clamp(value: number) {
   return Math.max(0, Math.min(100, Number(value) || 0));
 }
 
-async function createQuerySpec(mood: Mood, platforms: string[]) {
-  const fallback = localQuerySpec(mood);
+function normalizeFilters(filters?: DiscoveryFilters): DiscoveryFilters {
+  return {
+    country: filters?.country || defaultFilters.country,
+    era: filters?.era || defaultFilters.era,
+    obscurity: clamp(filters?.obscurity ?? defaultFilters.obscurity)
+  };
+}
+
+async function createQuerySpec(mood: Mood, platforms: string[], filters: DiscoveryFilters) {
+  const fallback = localQuerySpec(mood, filters);
 
   if (!process.env.OPENAI_API_KEY) {
     return fallback;
@@ -83,12 +94,16 @@ async function createQuerySpec(mood: Mood, platforms: string[]) {
           content: JSON.stringify({
             mood,
             platforms,
+            filters,
             schema: {
               query: "short natural-language movie taste description",
               keywords: "3-6 search keywords",
               minVoteAverage: "number 5.5-8.5",
               sortBy: "popularity.desc or vote_average.desc or revenue.desc",
-              genres: "comma-separated TMDB genre ids if useful"
+              genres: "comma-separated TMDB genre ids if useful",
+              country: "origin country code if useful",
+              yearFrom: "optional year floor",
+              yearTo: "optional year ceiling"
             }
           })
         }
@@ -107,21 +122,28 @@ async function createQuerySpec(mood: Mood, platforms: string[]) {
   }
 }
 
-function localQuerySpec(mood: Mood) {
+function localQuerySpec(mood: Mood, filters: DiscoveryFilters) {
   const genres = [];
   if (mood.stress > 68) genres.push("53");
   if (mood.happiness > 65) genres.push("35", "10751");
   if (mood.complexity > 65) genres.push("9648", "878");
   if (mood.pace > 65) genres.push("28", "12");
+  const [yearFrom, yearTo] = eraToRange(filters.era);
 
   return {
     query: `${mood.happiness > 60 ? "uplifting" : "moody"} ${mood.pace > 60 ? "fast-paced" : "slow-burn"} movies with ${
       mood.complexity > 60 ? "layered plots" : "clear emotional arcs"
+    }${filters.country !== "any" ? ` from ${filters.country}` : ""}${filters.era !== "any" ? ` in the ${filters.era}` : ""}${
+      filters.obscurity > 60 ? " with deep-cut taste" : ""
     }`,
     keywords: mood.complexity > 60 ? "mystery,twist,psychological" : "feel-good,journey,heartfelt",
-    minVoteAverage: mood.stress > 70 ? 6.4 : 6.8,
-    sortBy: mood.complexity > 70 ? "vote_average.desc" : "popularity.desc",
-    genres: genres.join(",")
+    minVoteAverage: mood.stress > 70 ? 6.2 : 6.8,
+    sortBy: filters.obscurity > 68 ? "vote_average.desc" : mood.complexity > 70 ? "vote_average.desc" : "popularity.desc",
+    genres: genres.join(","),
+    country: filters.country !== "any" ? filters.country : "",
+    yearFrom,
+    yearTo,
+    voteCountGte: filters.obscurity > 70 ? 40 : filters.obscurity > 45 ? 120 : 250
   };
 }
 
@@ -134,7 +156,7 @@ async function searchTmdb(
     api_key: process.env.TMDB_API_KEY || "",
     language: "en-US",
     sort_by: spec.sortBy,
-    "vote_count.gte": "250",
+    "vote_count.gte": String(spec.voteCountGte),
     "vote_average.gte": String(spec.minVoteAverage),
     include_adult: "false",
     page: "1"
@@ -142,6 +164,15 @@ async function searchTmdb(
 
   if (spec.genres) {
     params.set("with_genres", spec.genres);
+  }
+  if (spec.country) {
+    params.set("with_origin_country", spec.country);
+  }
+  if (spec.yearFrom) {
+    params.set("primary_release_date.gte", `${spec.yearFrom}-01-01`);
+  }
+  if (spec.yearTo) {
+    params.set("primary_release_date.lte", `${spec.yearTo}-12-31`);
   }
 
   const response = await fetch(`https://api.themoviedb.org/3/discover/movie?${params.toString()}`, {
@@ -174,6 +205,7 @@ async function searchTmdb(
         id: String(movie.id),
         title: movie.title,
         year: movie.release_date?.slice(0, 4) || "Movie",
+        countries: spec.country ? [spec.country] : [],
         poster: `https://image.tmdb.org/t/p/w780${movie.poster_path}`,
         overview: movie.overview || "",
         matchReason: buildReason(spec),
@@ -243,4 +275,25 @@ async function getAvailability(title: string, platforms: string[]) {
 
 function buildReason(spec: ReturnType<typeof localQuerySpec>) {
   return `Matched for ${spec.query.toLowerCase()} with ${spec.keywords.replaceAll(",", ", ")} signals.`;
+}
+
+function eraToRange(era: string) {
+  if (era === "any") {
+    return ["", ""];
+  }
+
+  if (era === "pre-1970") {
+    return ["1900", "1969"];
+  }
+
+  if (era === "2020s") {
+    return ["2020", "2029"];
+  }
+
+  const decade = Number(era.slice(0, 4));
+  if (!decade) {
+    return ["", ""];
+  }
+
+  return [String(decade), String(decade + 9)];
 }

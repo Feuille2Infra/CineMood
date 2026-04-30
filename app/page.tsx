@@ -11,10 +11,14 @@ import { Clapperboard, Loader2, Play, Search, Shuffle, Sparkles, ThumbsDown } fr
 import type { CSSProperties, ReactNode } from "react";
 import { useMemo, useRef, useState } from "react";
 import {
+  countryOptions,
+  defaultFilters,
   defaultMood,
   defaultRecommendations,
+  eraOptions,
   localRecommend,
   platforms,
+  type DiscoveryFilters,
   type MoodKey,
   type Movie,
   type SearchResponse
@@ -32,6 +36,7 @@ const initialRecommendations = defaultRecommendations();
 
 export default function Home() {
   const [mood, setMood] = useState<Record<MoodKey, number>>(defaultMood);
+  const [filters, setFilters] = useState<DiscoveryFilters>(defaultFilters);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(["Netflix", "Prime Video", "Max"]);
   const [movies, setMovies] = useState<Movie[]>(initialRecommendations.movies);
   const [query, setQuery] = useState(initialRecommendations.query);
@@ -54,13 +59,18 @@ export default function Home() {
   const complexityGlow = 0.18 + mood.complexity / 360;
   const tearGlow = 0.12 + mood.happiness / 420;
 
-  async function runSearch(nextMood: Record<MoodKey, number>, nextPlatforms: string[], nextSkipped: string[]) {
+  async function runSearch(
+    nextMood: Record<MoodKey, number>,
+    nextPlatforms: string[],
+    nextSkipped: string[],
+    nextFilters: DiscoveryFilters
+  ) {
     setLoading(true);
     setError("");
 
     try {
       if (useStaticRecommendations) {
-        const data = localRecommend(nextMood, nextPlatforms, nextSkipped);
+        const data = localRecommend(nextMood, nextPlatforms, nextSkipped, nextFilters);
         applyResults(data);
         return;
       }
@@ -68,7 +78,7 @@ export default function Home() {
       const response = await fetch("/api/recommend", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mood: nextMood, platforms: nextPlatforms, skipped: nextSkipped })
+        body: JSON.stringify({ mood: nextMood, platforms: nextPlatforms, skipped: nextSkipped, filters: nextFilters })
       });
 
       if (!response.ok) {
@@ -78,7 +88,7 @@ export default function Home() {
       const data = (await response.json()) as SearchResponse;
       applyResults(data);
     } catch {
-      const data = localRecommend(nextMood, nextPlatforms, nextSkipped);
+      const data = localRecommend(nextMood, nextPlatforms, nextSkipped, nextFilters);
       applyResults(data, !data.movies.length ? "No matches for this specific mood." : "Live APIs unavailable, using curated mood matching.");
     } finally {
       setLoading(false);
@@ -98,7 +108,7 @@ export default function Home() {
   }
 
   function findMovies() {
-    runSearch(mood, selectedPlatforms, skipped);
+    runSearch(mood, selectedPlatforms, skipped, filters);
   }
 
   function surpriseMe() {
@@ -110,10 +120,11 @@ export default function Home() {
     };
 
     setMood(surpriseMood);
+    setFilters(defaultFilters);
     setSelectedPlatforms([]);
     setSkipped([]);
     dragX.set(0);
-    runSearch(surpriseMood, [], []);
+    runSearch(surpriseMood, [], [], defaultFilters);
   }
 
   function randomValue() {
@@ -121,9 +132,30 @@ export default function Home() {
   }
 
   function togglePlatform(platform: string) {
-    setSelectedPlatforms((current) =>
-      current.includes(platform) ? current.filter((item) => item !== platform) : [...current, platform]
-    );
+    const nextPlatforms = selectedPlatforms.includes(platform)
+      ? selectedPlatforms.filter((item) => item !== platform)
+      : [...selectedPlatforms, platform];
+
+    setSelectedPlatforms(nextPlatforms);
+    setSkipped([]);
+    dragX.set(0);
+    runSearch(mood, nextPlatforms, [], filters);
+  }
+
+  function updateCountry(country: string) {
+    const nextFilters = { ...filters, country };
+    setFilters(nextFilters);
+    setSkipped([]);
+    dragX.set(0);
+    runSearch(mood, selectedPlatforms, [], nextFilters);
+  }
+
+  function updateEra(era: string) {
+    const nextFilters = { ...filters, era };
+    setFilters(nextFilters);
+    setSkipped([]);
+    dragX.set(0);
+    runSearch(mood, selectedPlatforms, [], nextFilters);
   }
 
   function skipMovie(movie: Movie) {
@@ -276,6 +308,68 @@ export default function Home() {
                           </button>
                         );
                       })}
+                    </div>
+
+                    <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                      <label className="block">
+                        <span className="mb-2 block text-[11px] uppercase tracking-[0.24em] text-slate-500">Country</span>
+                        <select
+                          className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-cinema-blue/40"
+                          value={filters.country}
+                          onChange={(event) => updateCountry(event.target.value)}
+                        >
+                          {countryOptions.map((option) => (
+                            <option key={option.value} className="bg-zinc-950" value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-2 block text-[11px] uppercase tracking-[0.24em] text-slate-500">Era</span>
+                        <select
+                          className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-cinema-blue/40"
+                          value={filters.era}
+                          onChange={(event) => updateEra(event.target.value)}
+                        >
+                          {eraOptions.map((option) => (
+                            <option key={option.value} className="bg-zinc-950" value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+
+                    <div className="mt-6 rounded-3xl border border-white/10 bg-white/[0.04] p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-white">Deep Cuts</p>
+                          <p className="mt-1 text-xs text-slate-400">Push the engine toward much rarer picks.</p>
+                        </div>
+                        <div className="rounded-full bg-cinema-blue/10 px-3 py-1 font-mono text-sm text-cinema-blue">
+                          {filters.obscurity}
+                        </div>
+                      </div>
+                      <div className="mt-5">
+                        <input
+                          aria-label="Deep cuts level"
+                          className="cinema-slider"
+                          max={100}
+                          min={0}
+                          style={{ "--slider-color": "#00D1FF" } as CSSProperties}
+                          type="range"
+                          value={filters.obscurity}
+                          onChange={(event) =>
+                            setFilters((current) => ({ ...current, obscurity: Number(event.target.value) }))
+                          }
+                        />
+                      </div>
+                      <div className="mt-3 flex items-center justify-between text-[11px] uppercase tracking-[0.22em] text-slate-500">
+                        <span>Accessible</span>
+                        <span>Obscure</span>
+                      </div>
                     </div>
                   </div>
 
@@ -439,6 +533,8 @@ function FilmStrip({ children }: { children: ReactNode }) {
 }
 
 function MovieCard({ movie, mobile = false, onSkip }: { movie: Movie; mobile?: boolean; onSkip?: () => void }) {
+  const countryLabel = movie.countries.length ? movie.countries.join(" / ") : "Global";
+
   return (
     <motion.article
       className={`group relative shrink-0 overflow-hidden rounded-[1.5rem] border border-white/10 bg-zinc-950 shadow-2xl ${
@@ -457,6 +553,9 @@ function MovieCard({ movie, mobile = false, onSkip }: { movie: Movie; mobile?: b
         >
           <p className="text-[11px] uppercase tracking-[0.26em] text-cinema-blue">Mood Summary</p>
           <p className="mt-3 text-sm leading-6 text-slate-200">{movie.matchReason}</p>
+          <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.22em] text-slate-400">
+            {countryLabel} / {movie.year}
+          </p>
           <div className="mt-4 flex flex-wrap gap-2">
             {movie.availability.map((item) => (
               <PlatformBadge key={item} name={item} />
@@ -487,7 +586,7 @@ function MovieCard({ movie, mobile = false, onSkip }: { movie: Movie; mobile?: b
           <div className="max-w-[80%]">
             <h4 className="text-2xl font-black text-white">{movie.title}</h4>
             <p className="mt-2 font-mono text-xs uppercase tracking-[0.24em] text-slate-300">
-              {movie.year} / {movie.rating.toFixed(1)}
+              {countryLabel} / {movie.year} / {movie.rating.toFixed(1)}
             </p>
           </div>
         </div>

@@ -2,10 +2,17 @@ export type MoodKey = "stress" | "happiness" | "complexity" | "pace";
 
 export type Mood = Record<MoodKey, number>;
 
+export type DiscoveryFilters = {
+  country: string;
+  era: string;
+  obscurity: number;
+};
+
 export type Movie = {
   id: string;
   title: string;
   year: string;
+  countries: string[];
   poster: string;
   overview: string;
   matchReason: string;
@@ -16,7 +23,7 @@ export type Movie = {
   rating: number;
 };
 
-type CuratedMovie = Omit<Movie, "provider" | "matchReason" | "availability"> & {
+type CuratedMovie = Omit<Movie, "provider" | "matchReason" | "availability" | "countries"> & {
   providers: string[];
   moodProfile: Mood;
   tags: string[];
@@ -30,11 +37,44 @@ export type SearchResponse = {
 
 export const platforms = ["Netflix", "Disney+", "Prime Video", "Max", "Hulu", "Apple TV+"];
 
+export const countryOptions = [
+  { value: "any", label: "Anywhere" },
+  { value: "US", label: "United States" },
+  { value: "FR", label: "France" },
+  { value: "JP", label: "Japan" },
+  { value: "KR", label: "South Korea" },
+  { value: "HK", label: "Hong Kong" },
+  { value: "IT", label: "Italy" },
+  { value: "SE", label: "Sweden" },
+  { value: "IR", label: "Iran" },
+  { value: "TW", label: "Taiwan" },
+  { value: "ES", label: "Spain" },
+  { value: "DE", label: "Germany" },
+  { value: "SU", label: "Soviet Union" }
+] as const;
+
+export const eraOptions = [
+  { value: "any", label: "Any Era" },
+  { value: "pre-1970", label: "Pre-1970" },
+  { value: "1970s", label: "1970s" },
+  { value: "1980s", label: "1980s" },
+  { value: "1990s", label: "1990s" },
+  { value: "2000s", label: "2000s" },
+  { value: "2010s", label: "2010s" },
+  { value: "2020s", label: "2020s" }
+] as const;
+
 export const defaultMood: Mood = {
   stress: 42,
   happiness: 70,
   complexity: 58,
   pace: 66
+};
+
+export const defaultFilters: DiscoveryFilters = {
+  country: "any",
+  era: "any",
+  obscurity: 28
 };
 
 const defaultPlatforms = ["Netflix", "Prime Video", "Max"];
@@ -390,23 +430,226 @@ const curatedMovies: CuratedMovie[] = [
     rating: 8.1,
     moodProfile: { stress: 28, happiness: 62, complexity: 74, pace: 42 },
     tags: ["mind-bending", "uplifting", "satire"]
+  },
+  {
+    id: "843",
+    title: "In the Mood for Love",
+    year: "2000",
+    poster: "https://image.tmdb.org/t/p/w780/iYypPT4bhqXfq1bWmMKLwYhZIvU.jpg",
+    overview: "Two neighbors form an intimate bond while suspecting their spouses are having an affair.",
+    hook: "A lush, aching slow-burn for nights that want pure atmosphere.",
+    providers: ["Prime Video", "Max"],
+    watchUrl: "https://www.justwatch.com/us/movie/in-the-mood-for-love",
+    rating: 8.1,
+    moodProfile: { stress: 18, happiness: 26, complexity: 68, pace: 20 },
+    tags: ["romance", "slow-burn", "art-house"]
+  },
+  {
+    id: "1398",
+    title: "Stalker",
+    year: "1979",
+    poster: "https://image.tmdb.org/t/p/w780/rPdtLWNsZmAtoZl9PK7S2wE3qiS.jpg",
+    overview: "Three men travel through a forbidden zone where desires may be fulfilled.",
+    hook: "Hypnotic and philosophical when you want something genuinely deep-cut.",
+    providers: ["Apple TV+", "Prime Video"],
+    watchUrl: "https://www.justwatch.com/us/movie/stalker",
+    rating: 8.1,
+    moodProfile: { stress: 24, happiness: 12, complexity: 98, pace: 8 },
+    tags: ["slow-burn", "mind-bending", "art-house"]
+  },
+  {
+    id: "334533",
+    title: "Beau Travail",
+    year: "1999",
+    poster: "https://image.tmdb.org/t/p/w780/fpTOj8jLxT0s5QdA0nKXG2WQ9wa.jpg",
+    overview: "A foreign legion officer spirals into jealousy and obsession.",
+    hook: "Sculptural, sensual, and almost anti-plot in a great way.",
+    providers: ["Max", "Apple TV+"],
+    watchUrl: "https://www.justwatch.com/us/movie/beau-travail",
+    rating: 7.3,
+    moodProfile: { stress: 36, happiness: 10, complexity: 82, pace: 14 },
+    tags: ["art-house", "slow-burn", "drama"]
+  },
+  {
+    id: "48450",
+    title: "A Brighter Summer Day",
+    year: "1991",
+    poster: "https://image.tmdb.org/t/p/w780/AxvX1IYh5b7mL48bLJ1O0hJj6YV.jpg",
+    overview: "A teenager drifts toward violence amid family tension and youth-gang rivalries in 1960s Taipei.",
+    hook: "Expansive, patient, and incredibly rich if you want a rare masterpiece.",
+    providers: ["Apple TV+", "Prime Video"],
+    watchUrl: "https://www.justwatch.com/us/movie/a-brighter-summer-day",
+    rating: 8.3,
+    moodProfile: { stress: 44, happiness: 16, complexity: 96, pace: 16 },
+    tags: ["art-house", "epic", "layered"]
+  },
+  {
+    id: "10376",
+    title: "Taste of Cherry",
+    year: "1997",
+    poster: "https://image.tmdb.org/t/p/w780/pT7dP6K1JrVN6a8GN28AL5soNqd.jpg",
+    overview: "A man drives through the outskirts of Tehran searching for someone to perform a final task.",
+    hook: "Minimal, contemplative, and quietly devastating.",
+    providers: ["Apple TV+", "Prime Video"],
+    watchUrl: "https://www.justwatch.com/us/movie/taste-of-cherry",
+    rating: 7.7,
+    moodProfile: { stress: 12, happiness: 6, complexity: 84, pace: 6 },
+    tags: ["art-house", "meditative", "slow-burn"]
+  },
+  {
+    id: "26617",
+    title: "The Spirit of the Beehive",
+    year: "1973",
+    poster: "https://image.tmdb.org/t/p/w780/eI8Lw2f0x2mW7l9f4vJ6tR8wsnD.jpg",
+    overview: "A young girl in rural Spain becomes haunted by the memory of Frankenstein.",
+    hook: "Whisper-quiet and uncanny, for a very specific wavelength.",
+    providers: ["Apple TV+", "Max"],
+    watchUrl: "https://www.justwatch.com/us/movie/the-spirit-of-the-beehive",
+    rating: 7.7,
+    moodProfile: { stress: 20, happiness: 14, complexity: 76, pace: 10 },
+    tags: ["art-house", "slow-burn", "haunting"]
+  },
+  {
+    id: "11423",
+    title: "Memories of Murder",
+    year: "2003",
+    poster: "https://image.tmdb.org/t/p/w780/8M8dptH1QbQZ3DTH8a7Yd3w0r1W.jpg",
+    overview: "Detectives stumble through a serial murder case in a small Korean province.",
+    hook: "A grim procedural with strange humor and a masterful undertow.",
+    providers: ["Hulu", "Netflix"],
+    watchUrl: "https://www.justwatch.com/us/movie/memories-of-murder",
+    rating: 8.1,
+    moodProfile: { stress: 82, happiness: 10, complexity: 78, pace: 58 },
+    tags: ["thriller", "crime", "art-house"]
+  },
+  {
+    id: "14537",
+    title: "Harakiri",
+    year: "1962",
+    poster: "https://image.tmdb.org/t/p/w780/8dC7fA1z1s3wW6xP8bN0kUQH6wH.jpg",
+    overview: "A ronin requests ritual suicide at a feudal estate, exposing brutal hypocrisy.",
+    hook: "Severe, elegant, and morally razor-sharp.",
+    providers: ["Max", "Apple TV+"],
+    watchUrl: "https://www.justwatch.com/us/movie/harakiri",
+    rating: 8.4,
+    moodProfile: { stress: 66, happiness: 8, complexity: 88, pace: 24 },
+    tags: ["classic", "period", "art-house"]
+  },
+  {
+    id: "406",
+    title: "La Haine",
+    year: "1995",
+    poster: "https://image.tmdb.org/t/p/w780/8M4zG2f9T2W2WH2L2rJQqJ4v2rV.jpg",
+    overview: "Three friends roam Paris after a night of riots in the banlieue.",
+    hook: "Charged, restless, and politically raw.",
+    providers: ["Netflix", "Prime Video"],
+    watchUrl: "https://www.justwatch.com/us/movie/la-haine",
+    rating: 8.1,
+    moodProfile: { stress: 78, happiness: 12, complexity: 70, pace: 62 },
+    tags: ["crime", "drama", "art-house"]
   }
 ];
 
+const movieCountries: Record<string, string[]> = {
+  "603": ["US"],
+  "496243": ["KR"],
+  "13": ["US"],
+  "550": ["US"],
+  "157336": ["US"],
+  "76341": ["US", "AU"],
+  "329865": ["US"],
+  "244786": ["US"],
+  "49047": ["US", "GB"],
+  "8587": ["US"],
+  "862": ["US"],
+  "637": ["IT"],
+  "27205": ["US", "GB"],
+  "106646": ["US"],
+  "49026": ["US", "GB"],
+  "1124": ["US", "GB"],
+  "120": ["US", "NZ"],
+  "313369": ["US"],
+  "335984": ["US", "GB", "CA"],
+  "11324": ["US"],
+  "807": ["US"],
+  "12": ["US"],
+  "1578": ["US"],
+  "640": ["US"],
+  "510": ["US"],
+  "8078": ["US", "GB"],
+  "37165": ["US"],
+  "843": ["HK"],
+  "1398": ["SU"],
+  "334533": ["FR"],
+  "48450": ["TW"],
+  "10376": ["IR"],
+  "26617": ["ES"],
+  "11423": ["KR"],
+  "14537": ["JP"],
+  "406": ["FR"]
+};
+
+const movieObscurity: Record<string, number> = {
+  "603": 18,
+  "496243": 26,
+  "13": 16,
+  "550": 22,
+  "157336": 24,
+  "76341": 24,
+  "329865": 30,
+  "244786": 28,
+  "49047": 32,
+  "8587": 16,
+  "862": 14,
+  "637": 42,
+  "27205": 18,
+  "106646": 20,
+  "49026": 14,
+  "1124": 34,
+  "120": 22,
+  "313369": 30,
+  "335984": 38,
+  "11324": 30,
+  "807": 24,
+  "12": 12,
+  "1578": 54,
+  "640": 24,
+  "510": 58,
+  "8078": 46,
+  "37165": 34,
+  "843": 72,
+  "1398": 94,
+  "334533": 90,
+  "48450": 96,
+  "10376": 92,
+  "26617": 93,
+  "11423": 62,
+  "14537": 84,
+  "406": 68
+};
+
 export function defaultRecommendations(): SearchResponse {
-  return localRecommend(defaultMood, defaultPlatforms, []);
+  return localRecommend(defaultMood, defaultPlatforms, [], defaultFilters);
 }
 
-export function localRecommend(mood: Mood, selectedPlatforms: string[], skipped: string[]): SearchResponse {
+export function localRecommend(
+  mood: Mood,
+  selectedPlatforms: string[],
+  skipped: string[],
+  filters: DiscoveryFilters = defaultFilters
+): SearchResponse {
   const normalizedMood = normalizeMood(mood);
   const skippedSet = new Set(skipped);
   const activePlatforms = selectedPlatforms.length ? selectedPlatforms : platforms;
 
   const ranked = curatedMovies
     .filter((movie) => !skippedSet.has(movie.id))
+    .filter((movie) => matchesCountry(getMovieCountries(movie.id), filters.country))
+    .filter((movie) => matchesEra(movie.year, filters.era))
     .map((movie) => {
       const matchingProviders = movie.providers.filter((provider) => activePlatforms.includes(provider));
       const provider = matchingProviders[0] || movie.providers[0];
+      const obscurity = getMovieObscurity(movie.id);
 
       const distance =
         Math.abs(movie.moodProfile.stress - normalizedMood.stress) * 1.15 +
@@ -415,14 +658,16 @@ export function localRecommend(mood: Mood, selectedPlatforms: string[], skipped:
         Math.abs(movie.moodProfile.pace - normalizedMood.pace) * 1.2;
 
       const tagBonus = getTagBonus(movie.tags, normalizedMood);
+      const obscurityBonus = 28 - Math.abs(obscurity - filters.obscurity) * 0.68;
       const providerBonus = selectedPlatforms.length ? (matchingProviders.length ? 18 : -26) : 0;
-      const score = 140 - distance + tagBonus + providerBonus;
+      const score = 140 - distance + tagBonus + providerBonus + obscurityBonus;
 
       return {
         movie: {
           id: movie.id,
           title: movie.title,
           year: movie.year,
+          countries: getMovieCountries(movie.id),
           poster: movie.poster,
           overview: movie.overview,
           matchReason: buildReason(movie, normalizedMood),
@@ -446,7 +691,7 @@ export function localRecommend(mood: Mood, selectedPlatforms: string[], skipped:
     .map((entry) => entry.movie);
 
   return {
-    query: buildQuery(normalizedMood, selectedPlatforms),
+    query: buildQuery(normalizedMood, selectedPlatforms, filters),
     movies
   };
 }
@@ -472,14 +717,18 @@ function clamp(value: number) {
   return Math.max(0, Math.min(100, Number(value) || 0));
 }
 
-function buildQuery(mood: Mood, selectedPlatforms: string[]) {
+function buildQuery(mood: Mood, selectedPlatforms: string[], filters: DiscoveryFilters) {
   const stress = mood.stress > 72 ? "high-tension" : mood.stress > 45 ? "charged" : "calm";
   const happiness = mood.happiness > 70 ? "uplifting" : mood.happiness > 40 ? "bittersweet" : "brooding";
   const complexity = mood.complexity > 72 ? "brainy" : mood.complexity > 45 ? "layered" : "straightforward";
   const pace = mood.pace > 72 ? "propulsive" : mood.pace > 45 ? "steady" : "slow-burn";
   const platformSuffix = selectedPlatforms.length ? ` on ${selectedPlatforms.join(", ")}` : "";
+  const countrySuffix = filters.country !== "any" ? ` from ${getCountryLabel(filters.country)}` : "";
+  const eraSuffix = filters.era !== "any" ? ` in ${getEraLabel(filters.era)}` : "";
+  const obscuritySuffix =
+    filters.obscurity > 72 ? " with truly obscure deep cuts" : filters.obscurity > 48 ? " with off-path discoveries" : "";
 
-  return `${stress} ${happiness} ${pace} movies with ${complexity} storytelling${platformSuffix}`;
+  return `${stress} ${happiness} ${pace} movies with ${complexity} storytelling${countrySuffix}${eraSuffix}${platformSuffix}${obscuritySuffix}`;
 }
 
 function buildReason(movie: CuratedMovie, mood: Mood) {
@@ -572,4 +821,46 @@ function diversityPenalty(candidate: RankedEntry, selected: RankedEntry[]) {
 function buildWatchUrl(movie: CuratedMovie, provider: string) {
   const providerSlug = provider.toLowerCase().replaceAll("+", "plus").replaceAll(" ", "-");
   return `${movie.watchUrl}?preferred=${providerSlug}`;
+}
+
+function getMovieCountries(movieId: string) {
+  return movieCountries[movieId] || ["US"];
+}
+
+function getMovieObscurity(movieId: string) {
+  return movieObscurity[movieId] ?? 30;
+}
+
+function matchesCountry(countries: string[], selectedCountry: string) {
+  return selectedCountry === "any" ? true : countries.includes(selectedCountry);
+}
+
+function matchesEra(year: string, selectedEra: string) {
+  if (selectedEra === "any") {
+    return true;
+  }
+
+  const numericYear = Number(year);
+  if (!numericYear) {
+    return false;
+  }
+
+  if (selectedEra === "pre-1970") {
+    return numericYear < 1970;
+  }
+
+  if (selectedEra === "2020s") {
+    return numericYear >= 2020;
+  }
+
+  const decadeStart = Number(selectedEra.slice(0, 4));
+  return numericYear >= decadeStart && numericYear < decadeStart + 10;
+}
+
+function getCountryLabel(code: string) {
+  return countryOptions.find((option) => option.value === code)?.label || code;
+}
+
+function getEraLabel(value: string) {
+  return eraOptions.find((option) => option.value === value)?.label.toLowerCase() || value;
 }
