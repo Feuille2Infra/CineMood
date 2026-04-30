@@ -982,7 +982,9 @@ function getSeedCountries(movie: RecommendationSeed) {
 }
 
 function getSeedObscurity(movie: RecommendationSeed) {
-  return movie.seedSourceLists ? inferImportedObscurity(movie.seedSourceLists, movie.seedPersonalRating) : getMovieObscurity(movie.id);
+  return movie.seedSourceLists
+    ? inferImportedObscurity(movie.seedSourceLists, movie.seedPersonalRating ?? null)
+    : getMovieObscurity(movie.id);
 }
 
 function getSeedSourceLists(movie: RecommendationSeed) {
