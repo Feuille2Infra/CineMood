@@ -312,7 +312,12 @@ function getTmdbCredential() {
   return process.env.TMDB_BEARER_TOKEN || process.env.TMDB_API_KEY || "";
 }
 
-function getTmdbAuth() {
+type TmdbAuth = {
+  headers: Record<string, string>;
+  queryParams: Record<string, string>;
+};
+
+function getTmdbAuth(): TmdbAuth | null {
   const raw = getTmdbCredential();
   if (!raw) {
     return null;
