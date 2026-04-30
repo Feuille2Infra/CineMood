@@ -18,10 +18,12 @@ const config: Config = {
       },
       boxShadow: {
         neon: "0 0 36px rgba(0, 209, 255, 0.22)",
-        redglow: "0 0 34px rgba(229, 9, 20, 0.28)"
+        redglow: "0 0 34px rgba(229, 9, 20, 0.28)",
+        glass: "0 18px 80px rgba(0, 0, 0, 0.42)"
       },
       fontFamily: {
-        sans: ["var(--font-inter)", "Arial", "sans-serif"]
+        sans: ["var(--font-inter)", "Arial", "sans-serif"],
+        mono: ["var(--font-space-mono)", "monospace"]
       }
     }
   },

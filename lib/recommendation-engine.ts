@@ -10,12 +10,13 @@ export type Movie = {
   overview: string;
   matchReason: string;
   provider: string;
+  availability: string[];
   providerLogo?: string;
   watchUrl: string;
   rating: number;
 };
 
-type CuratedMovie = Omit<Movie, "provider" | "matchReason"> & {
+type CuratedMovie = Omit<Movie, "provider" | "matchReason" | "availability"> & {
   providers: string[];
   moodProfile: Mood;
   tags: string[];
@@ -257,6 +258,7 @@ export function localRecommend(mood: Mood, selectedPlatforms: string[], skipped:
           overview: movie.overview,
           matchReason: buildReason(movie, normalizedMood),
           provider,
+          availability: matchingProviders.length ? matchingProviders : movie.providers,
           watchUrl: buildWatchUrl(movie, provider),
           rating: movie.rating
         },

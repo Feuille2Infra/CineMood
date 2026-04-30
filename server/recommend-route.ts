@@ -23,6 +23,7 @@ type MovieResult = {
   overview: string;
   matchReason: string;
   provider: string;
+  availability: string[];
   watchUrl: string;
   rating: number;
 };
@@ -177,6 +178,7 @@ async function searchTmdb(
         overview: movie.overview || "",
         matchReason: buildReason(spec),
         provider: availability.provider,
+        availability: availability.availability,
         watchUrl: availability.watchUrl,
         rating: movie.vote_average || 0
       };
@@ -190,6 +192,7 @@ async function getAvailability(title: string, platforms: string[]) {
   const fallbackProvider = "JustWatch";
   const fallback = {
     provider: fallbackProvider,
+    availability: [fallbackProvider],
     watchUrl: `https://www.justwatch.com/us/search?q=${encodeURIComponent(title)}`
   };
 
@@ -220,9 +223,17 @@ async function getAvailability(title: string, platforms: string[]) {
       sources.find((source) => source.name && platforms.includes(source.name) && source.type === "sub") ||
       sources.find((source) => source.name && platforms.includes(source.name)) ||
       sources[0];
+    const filteredSources = platforms.length
+      ? sources.filter((source) => source.name && platforms.includes(source.name))
+      : sources;
+    const names = filteredSources
+      .map((source) => source.name)
+      .filter((name): name is string => Boolean(name))
+      .slice(0, 3);
 
     return {
       provider: preferred?.name || fallback.provider,
+      availability: names.length ? names : [preferred?.name || fallback.provider],
       watchUrl: preferred?.web_url || fallback.watchUrl
     };
   } catch {
