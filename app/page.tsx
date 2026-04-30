@@ -9,7 +9,7 @@ import {
 } from "framer-motion";
 import { Clapperboard, Loader2, Play, Search, Shuffle, Sparkles, ThumbsDown } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   countryOptions,
   defaultFilters,
@@ -46,6 +46,7 @@ export default function Home() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const [skipped, setSkipped] = useState<string[]>([]);
+  const moodSearchTimeout = useRef<ReturnType<typeof window.setTimeout> | null>(null);
 
   const activeMovie = movies[0];
   const dragX = useMotionValue(0);
@@ -62,6 +63,21 @@ export default function Home() {
   const complexityGlow = 0.18 + mood.complexity / 360;
   const tearGlow = 0.12 + mood.happiness / 420;
 
+  useEffect(() => {
+    return () => {
+      if (moodSearchTimeout.current !== null) {
+        window.clearTimeout(moodSearchTimeout.current);
+      }
+    };
+  }, []);
+
+  function clearPendingMoodSearch() {
+    if (moodSearchTimeout.current !== null) {
+      window.clearTimeout(moodSearchTimeout.current);
+      moodSearchTimeout.current = null;
+    }
+  }
+
   async function runSearch(
     nextMood: Record<MoodKey, number>,
     nextPlatforms: string[],
@@ -70,6 +86,10 @@ export default function Home() {
     cursor: string | null = null,
     append = false
   ) {
+    if (!append) {
+      clearPendingMoodSearch();
+    }
+
     if (append) {
       setLoadingMore(true);
     } else {
@@ -190,6 +210,17 @@ export default function Home() {
     setSkipped([]);
     dragX.set(0);
     runSearch(mood, selectedPlatforms, [], nextFilters, null, false);
+  }
+
+  function updateMoodValue(key: MoodKey, value: number) {
+    const nextMood = { ...mood, [key]: value };
+    setMood(nextMood);
+    setSkipped([]);
+    dragX.set(0);
+    clearPendingMoodSearch();
+    moodSearchTimeout.current = window.setTimeout(() => {
+      runSearch(nextMood, selectedPlatforms, [], filters, null, false);
+    }, 180);
   }
 
   function loadMore() {
@@ -314,9 +345,7 @@ export default function Home() {
                             style={{ "--slider-color": slider.color } as CSSProperties}
                             type="range"
                             value={mood[slider.key]}
-                            onChange={(event) =>
-                              setMood((current) => ({ ...current, [slider.key]: Number(event.target.value) }))
-                            }
+                            onChange={(event) => updateMoodValue(slider.key, Number(event.target.value))}
                           />
                         </div>
 
