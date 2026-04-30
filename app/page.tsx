@@ -33,6 +33,7 @@ const sliders: Array<{ key: MoodKey; label: string; color: string; low: string; 
 
 const useStaticRecommendations = process.env.NEXT_PUBLIC_STATIC_EXPORT === "true";
 const initialRecommendations = defaultRecommendations();
+const visibleBatchSize = 10;
 
 export default function Home() {
   const [mood, setMood] = useState<Record<MoodKey, number>>(defaultMood);
@@ -46,8 +47,14 @@ export default function Home() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const [skipped, setSkipped] = useState<string[]>([]);
+  const [visibleOffset, setVisibleOffset] = useState(0);
+  const pendingVisibleOffsetRef = useRef<number | null>(null);
 
-  const activeMovie = movies[0];
+  const visibleMovies = useMemo(
+    () => movies.slice(visibleOffset, visibleOffset + visibleBatchSize),
+    [movies, visibleOffset]
+  );
+  const activeMovie = visibleMovies[0];
   const dragX = useMotionValue(0);
   const rotate = useTransform(dragX, [-180, 180], [-12, 12]);
   const mobileOpacity = useTransform(dragX, [-180, 0, 180], [0.42, 1, 0.42]);
@@ -61,6 +68,10 @@ export default function Home() {
   const adrenalineGlow = 0.28 + (mood.stress + mood.pace) / 320;
   const complexityGlow = 0.18 + mood.complexity / 360;
   const tearGlow = 0.12 + mood.happiness / 420;
+  const visibleRangeStart = visibleMovies.length ? visibleOffset + 1 : 0;
+  const visibleRangeEnd = visibleMovies.length ? visibleOffset + visibleMovies.length : 0;
+  const canGoPreviousBatch = visibleOffset > 0;
+  const canGoNextBatch = visibleOffset + visibleBatchSize < movies.length || Boolean(nextCursor);
 
   async function runSearch(
     nextMood: Record<MoodKey, number>,
@@ -124,6 +135,15 @@ export default function Home() {
     setQuery(data.query);
     setTotalMatches(data.totalMatches);
     setNextCursor(data.nextCursor);
+    if (append) {
+      if (pendingVisibleOffsetRef.current !== null) {
+        setVisibleOffset(pendingVisibleOffsetRef.current);
+        pendingVisibleOffsetRef.current = null;
+      }
+    } else {
+      pendingVisibleOffsetRef.current = null;
+      setVisibleOffset(0);
+    }
 
     if (!data.movies.length && !append) {
       setError("No matches for this specific mood.");
@@ -202,12 +222,24 @@ export default function Home() {
     runSearch(mood, selectedPlatforms, [], filters, null, false);
   }
 
-  function loadMore() {
+  async function goToNextBatch() {
+    const nextOffset = visibleOffset + visibleBatchSize;
+    if (nextOffset < movies.length) {
+      setVisibleOffset(nextOffset);
+      return;
+    }
+
     if (!nextCursor || loadingMore || loading) {
       return;
     }
 
-    runSearch(mood, selectedPlatforms, skipped, filters, nextCursor, true);
+    pendingVisibleOffsetRef.current = nextOffset;
+    await runSearch(mood, selectedPlatforms, skipped, filters, nextCursor, true);
+  }
+
+  function goToPreviousBatch() {
+    pendingVisibleOffsetRef.current = null;
+    setVisibleOffset(Math.max(0, visibleOffset - visibleBatchSize));
   }
 
   function skipMovie(movie: Movie) {
@@ -465,13 +497,14 @@ export default function Home() {
                       <h3 className="mt-2 text-2xl font-bold text-white">Your film strip</h3>
                     </div>
                     <p className="font-mono text-xs text-slate-400">
-                      {movies.length.toString().padStart(2, "0")} / {totalMatches.toString().padStart(2, "0")} loaded
+                      {visibleRangeStart.toString().padStart(2, "0")}-{visibleRangeEnd.toString().padStart(2, "0")} /{" "}
+                      {totalMatches.toString().padStart(2, "0")}
                     </p>
                   </div>
 
-                  {movies.length ? (
+                  {visibleMovies.length ? (
                     <div className="flex-1 space-y-4 overflow-y-auto pr-2">
-                      {movies.map((movie) => (
+                      {visibleMovies.map((movie) => (
                         <VerticalMovieCard key={movie.id} movie={movie} />
                       ))}
                     </div>
@@ -483,17 +516,14 @@ export default function Home() {
                     />
                   )}
 
-                  {nextCursor ? (
-                    <div className="mt-5 flex justify-center">
-                      <button
-                        className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.05] px-5 py-3 font-semibold text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-60"
-                        disabled={loadingMore || loading}
-                        onClick={loadMore}
-                      >
-                        {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-cinema-blue" />}
-                        Load more films
-                      </button>
-                    </div>
+                  {visibleMovies.length ? (
+                    <BatchPager
+                      canGoNext={canGoNextBatch}
+                      canGoPrevious={canGoPreviousBatch}
+                      loading={loadingMore || loading}
+                      onNext={goToNextBatch}
+                      onPrevious={goToPreviousBatch}
+                    />
                   ) : null}
                 </section>
               </div>
@@ -507,14 +537,15 @@ export default function Home() {
                 <h3 className="mt-2 text-2xl font-bold text-white">Your film strip</h3>
               </div>
               <p className="font-mono text-xs text-slate-400">
-                {movies.length.toString().padStart(2, "0")} / {totalMatches.toString().padStart(2, "0")} loaded
+                {visibleRangeStart.toString().padStart(2, "0")}-{visibleRangeEnd.toString().padStart(2, "0")} /{" "}
+                {totalMatches.toString().padStart(2, "0")}
               </p>
             </div>
 
             <div className="hidden lg:block">
-              {movies.length ? (
+              {visibleMovies.length ? (
                 <FilmStrip>
-                  {movies.map((movie) => (
+                  {visibleMovies.map((movie) => (
                     <MovieCard key={movie.id} movie={movie} />
                   ))}
                 </FilmStrip>
@@ -559,17 +590,14 @@ export default function Home() {
               </AnimatePresence>
             </div>
 
-            {nextCursor ? (
-              <div className="mt-6 flex justify-center">
-                <button
-                  className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.05] px-5 py-3 font-semibold text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-60"
-                  disabled={loadingMore || loading}
-                  onClick={loadMore}
-                >
-                  {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-cinema-blue" />}
-                  Load more films
-                </button>
-              </div>
+            {visibleMovies.length ? (
+              <BatchPager
+                canGoNext={canGoNextBatch}
+                canGoPrevious={canGoPreviousBatch}
+                loading={loadingMore || loading}
+                onNext={goToNextBatch}
+                onPrevious={goToPreviousBatch}
+              />
             ) : null}
           </section>
         </section>
@@ -637,6 +665,40 @@ function FilmStrip({ children }: { children: ReactNode }) {
       >
         {children}
       </div>
+    </div>
+  );
+}
+
+function BatchPager({
+  canGoNext,
+  canGoPrevious,
+  loading,
+  onNext,
+  onPrevious
+}: {
+  canGoNext: boolean;
+  canGoPrevious: boolean;
+  loading: boolean;
+  onNext: () => void;
+  onPrevious: () => void;
+}) {
+  return (
+    <div className="mt-5 flex items-center justify-center gap-3">
+      <button
+        className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.05] px-5 py-3 font-semibold text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40"
+        disabled={!canGoPrevious || loading}
+        onClick={onPrevious}
+      >
+        Previous 10
+      </button>
+      <button
+        className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.05] px-5 py-3 font-semibold text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40"
+        disabled={!canGoNext || loading}
+        onClick={onNext}
+      >
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-cinema-blue" />}
+        Next 10
+      </button>
     </div>
   );
 }

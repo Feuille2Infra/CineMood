@@ -97,7 +97,7 @@ export const defaultFilters: DiscoveryFilters = {
 };
 
 const defaultPlatforms: string[] = [];
-const localResultLimit = 24;
+const localResultLimit = 10;
 
 const curatedMovies: CuratedMovie[] = [
   {
