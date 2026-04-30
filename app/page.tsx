@@ -161,6 +161,14 @@ export default function Home() {
     runSearch(mood, selectedPlatforms, [], nextFilters);
   }
 
+  function updateObscurity(obscurity: number) {
+    const nextFilters = { ...filters, obscurity };
+    setFilters(nextFilters);
+    setSkipped([]);
+    dragX.set(0);
+    runSearch(mood, selectedPlatforms, [], nextFilters);
+  }
+
   function skipMovie(movie: Movie) {
     dragX.set(0);
     setSkipped((current) => [...current, movie.id]);
@@ -364,9 +372,7 @@ export default function Home() {
                           style={{ "--slider-color": "#00D1FF" } as CSSProperties}
                           type="range"
                           value={filters.obscurity}
-                          onChange={(event) =>
-                            setFilters((current) => ({ ...current, obscurity: Number(event.target.value) }))
-                          }
+                          onChange={(event) => updateObscurity(Number(event.target.value))}
                         />
                       </div>
                       <div className="mt-3 flex items-center justify-between text-[11px] uppercase tracking-[0.22em] text-slate-500">

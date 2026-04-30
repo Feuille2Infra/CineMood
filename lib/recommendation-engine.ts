@@ -686,6 +686,7 @@ export function localRecommend(
     .filter((movie) => !skippedSet.has(movie.id))
     .filter((movie) => matchesCountry(getMovieCountries(movie.id), filters.country))
     .filter((movie) => matchesEra(movie.year, filters.era))
+    .filter((movie) => matchesObscurity(getMovieObscurity(movie.id), filters.obscurity))
     .map((movie) => {
       const matchingProviders = movie.providers.filter((provider) => activePlatforms.includes(provider));
       const provider = matchingProviders[0] || movie.providers[0];
@@ -933,4 +934,28 @@ function getSourceBonus(movieId: string, filters: DiscoveryFilters) {
   }
 
   return bonus;
+}
+
+function matchesObscurity(movieObscurity: number, selectedObscurity: number) {
+  if (selectedObscurity >= 85) {
+    return movieObscurity >= 70;
+  }
+
+  if (selectedObscurity >= 68) {
+    return movieObscurity >= 52;
+  }
+
+  if (selectedObscurity >= 52) {
+    return movieObscurity >= 38;
+  }
+
+  if (selectedObscurity <= 15) {
+    return movieObscurity <= 24;
+  }
+
+  if (selectedObscurity <= 30) {
+    return movieObscurity <= 38;
+  }
+
+  return true;
 }
