@@ -269,14 +269,13 @@ export function localRecommend(mood: Mood, selectedPlatforms: string[], skipped:
     ? ranked.filter((entry) => entry.providers.some((provider) => activePlatforms.includes(provider)))
     : ranked;
 
-  const pool = platformFiltered.length >= Math.min(4, ranked.length) ? platformFiltered : ranked;
-  const movies = pool
+  const movies = platformFiltered
     .sort((left, right) => right.score - left.score)
     .slice(0, 8)
     .map((entry) => entry.movie);
 
   return {
-    query: buildQuery(normalizedMood),
+    query: buildQuery(normalizedMood, selectedPlatforms),
     movies
   };
 }
@@ -294,13 +293,14 @@ function clamp(value: number) {
   return Math.max(0, Math.min(100, Number(value) || 0));
 }
 
-function buildQuery(mood: Mood) {
+function buildQuery(mood: Mood, selectedPlatforms: string[]) {
   const stress = mood.stress > 72 ? "high-tension" : mood.stress > 45 ? "charged" : "calm";
   const happiness = mood.happiness > 70 ? "uplifting" : mood.happiness > 40 ? "bittersweet" : "brooding";
   const complexity = mood.complexity > 72 ? "brainy" : mood.complexity > 45 ? "layered" : "straightforward";
   const pace = mood.pace > 72 ? "propulsive" : mood.pace > 45 ? "steady" : "slow-burn";
+  const platformSuffix = selectedPlatforms.length ? ` on ${selectedPlatforms.join(", ")}` : "";
 
-  return `${stress} ${happiness} ${pace} movies with ${complexity} storytelling`;
+  return `${stress} ${happiness} ${pace} movies with ${complexity} storytelling${platformSuffix}`;
 }
 
 function buildReason(movie: CuratedMovie, mood: Mood) {

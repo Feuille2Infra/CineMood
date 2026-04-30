@@ -49,6 +49,9 @@ export default function Home() {
         const data = localRecommend(mood, selectedPlatforms, skipped);
         setMovies(data.movies);
         setQuery(data.query);
+        if (!data.movies.length) {
+          setError("No movies found on the selected platforms for this mood.");
+        }
         return;
       }
 
@@ -65,11 +68,18 @@ export default function Home() {
       const data = (await response.json()) as SearchResponse;
       setMovies(data.movies);
       setQuery(data.query);
+      if (!data.movies.length) {
+        setError("No movies found on the selected platforms for this mood.");
+      }
     } catch {
       const data = localRecommend(mood, selectedPlatforms, skipped);
       setMovies(data.movies);
       setQuery(data.query);
-      setError("Live APIs unavailable, using curated mood matching.");
+      setError(
+        data.movies.length
+          ? "Live APIs unavailable, using curated mood matching."
+          : "No movies found on the selected platforms for this mood."
+      );
     } finally {
       setLoading(false);
     }
@@ -188,11 +198,17 @@ export default function Home() {
             </div>
 
             <div className="hidden min-h-0 flex-1 flex-col justify-center lg:flex">
-              <div className="poster-mask no-scrollbar flex gap-5 overflow-x-auto px-8 py-8">
-                {movies.map((movie) => (
-                  <MovieCard key={movie.id} movie={movie} />
-                ))}
-              </div>
+              {movies.length ? (
+                <div className="poster-mask no-scrollbar flex gap-5 overflow-x-auto px-8 py-8">
+                  {movies.map((movie) => (
+                    <MovieCard key={movie.id} movie={movie} />
+                  ))}
+                </div>
+              ) : (
+                <div className="mx-8 rounded-lg border border-white/10 bg-white/[0.04] p-8 text-center text-slate-300">
+                  No matches on the selected platforms. Try adding another service or adjusting the mood.
+                </div>
+              )}
             </div>
 
             <div className="flex flex-1 items-center justify-center lg:hidden">
@@ -215,7 +231,7 @@ export default function Home() {
                   </motion.div>
                 ) : (
                   <div className="rounded-lg border border-white/10 bg-white/[0.04] p-8 text-center text-slate-300">
-                    All caught up. Run Magic Search again.
+                    No matches on the selected platforms. Try adding another service or adjusting the mood.
                   </div>
                 )}
               </AnimatePresence>

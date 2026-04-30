@@ -33,9 +33,10 @@ export async function POST(request: Request) {
   const platforms = Array.isArray(body.platforms) ? body.platforms : [];
   const skipped = new Set(Array.isArray(body.skipped) ? body.skipped : []);
   const localResults = localRecommend(mood, platforms, [...skipped]);
+  const canUseLiveDiscovery = Boolean(process.env.TMDB_API_KEY) && (platforms.length === 0 || Boolean(process.env.WATCHMODE_API_KEY));
 
   const querySpec = await createQuerySpec(mood, platforms);
-  const movies = process.env.TMDB_API_KEY
+  const movies = canUseLiveDiscovery
     ? await searchTmdb(querySpec, platforms, skipped)
     : localResults.movies;
 
@@ -186,7 +187,7 @@ async function searchTmdb(
 }
 
 async function getAvailability(title: string, platforms: string[]) {
-  const fallbackProvider = platforms[0] || "JustWatch";
+  const fallbackProvider = "JustWatch";
   const fallback = {
     provider: fallbackProvider,
     watchUrl: `https://www.justwatch.com/us/search?q=${encodeURIComponent(title)}`
