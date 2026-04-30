@@ -8,8 +8,8 @@ import {
   useTransform
 } from "framer-motion";
 import { Clapperboard, Loader2, Play, Search, Shuffle, Sparkles, ThumbsDown } from "lucide-react";
-import type { CSSProperties } from "react";
-import { useMemo, useState } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   defaultMood,
   defaultRecommendations,
@@ -323,11 +323,11 @@ export default function Home() {
 
             <div className="hidden lg:block">
               {movies.length ? (
-                <div className="poster-mask no-scrollbar flex gap-5 overflow-x-auto px-2 py-6">
+                <FilmStrip>
                   {movies.map((movie) => (
                     <MovieCard key={movie.id} movie={movie} />
                   ))}
-                </div>
+                </FilmStrip>
               ) : (
                 <EmptyState
                   description="Your platform filter and emotional mix are unusually specific. Reset the night with a wildcard pick."
@@ -372,6 +372,69 @@ export default function Home() {
         </section>
       </section>
     </main>
+  );
+}
+
+function FilmStrip({ children }: { children: ReactNode }) {
+  const stripRef = useRef<HTMLDivElement>(null);
+  const dragState = useRef({ active: false, pointerId: -1, startX: 0, scrollLeft: 0 });
+
+  function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    const strip = stripRef.current;
+    if (!strip) {
+      return;
+    }
+
+    dragState.current = {
+      active: true,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      scrollLeft: strip.scrollLeft
+    };
+
+    strip.setPointerCapture(event.pointerId);
+  }
+
+  function handlePointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    const strip = stripRef.current;
+    if (!strip || !dragState.current.active) {
+      return;
+    }
+
+    const distance = event.clientX - dragState.current.startX;
+    strip.scrollLeft = dragState.current.scrollLeft - distance;
+  }
+
+  function endDrag(event?: React.PointerEvent<HTMLDivElement>) {
+    const strip = stripRef.current;
+    if (!strip || !dragState.current.active) {
+      return;
+    }
+
+    if (event && strip.hasPointerCapture(dragState.current.pointerId)) {
+      strip.releasePointerCapture(dragState.current.pointerId);
+    }
+
+    dragState.current.active = false;
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="px-2 text-[11px] uppercase tracking-[0.26em] text-slate-500">
+        Grab and drag to explore the full strip
+      </p>
+      <div
+        ref={stripRef}
+        className="poster-mask no-scrollbar flex cursor-grab gap-5 overflow-x-auto px-2 py-6 active:cursor-grabbing select-none"
+        onPointerCancel={endDrag}
+        onPointerDown={handlePointerDown}
+        onPointerLeave={endDrag}
+        onPointerMove={handlePointerMove}
+        onPointerUp={endDrag}
+      >
+        {children}
+      </div>
+    </div>
   );
 }
 

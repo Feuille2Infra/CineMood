@@ -221,6 +221,175 @@ const curatedMovies: CuratedMovie[] = [
     rating: 8.0,
     moodProfile: { stress: 68, happiness: 58, complexity: 50, pace: 88 },
     tags: ["chaotic", "dark-comedy", "fast"]
+  },
+  {
+    id: "49026",
+    title: "The Dark Knight",
+    year: "2008",
+    poster: "https://image.tmdb.org/t/p/w780/qJ2tW6WMUDux911r6m7haRef0WH.jpg",
+    overview: "Batman faces a criminal mastermind who turns Gotham into a test of moral collapse.",
+    hook: "A prestige blockbuster with pressure, scale, and a sharp edge.",
+    providers: ["Max", "Netflix"],
+    watchUrl: "https://www.justwatch.com/us/movie/the-dark-knight",
+    rating: 8.5,
+    moodProfile: { stress: 82, happiness: 26, complexity: 72, pace: 84 },
+    tags: ["action", "dark", "epic"]
+  },
+  {
+    id: "1124",
+    title: "The Prestige",
+    year: "2006",
+    poster: "https://image.tmdb.org/t/p/w780/5MXyQfz8xUP3dIFPTubhTsbFY6N.jpg",
+    overview: "Two rival magicians push obsession and sacrifice to the edge.",
+    hook: "A beautifully wound puzzle for high-complexity nights.",
+    providers: ["Prime Video", "Max"],
+    watchUrl: "https://www.justwatch.com/us/movie/the-prestige",
+    rating: 8.2,
+    moodProfile: { stress: 58, happiness: 24, complexity: 96, pace: 54 },
+    tags: ["mind-bending", "mystery", "period"]
+  },
+  {
+    id: "120",
+    title: "The Lord of the Rings: The Fellowship of the Ring",
+    year: "2001",
+    poster: "https://image.tmdb.org/t/p/w780/6oom5QYQ2yQTMJIbnvbkBL9cHo6.jpg",
+    overview: "A quiet hobbit begins a journey that will reshape Middle-earth.",
+    hook: "Epic comfort cinema with lift, scale, and breathing room.",
+    providers: ["Max", "Prime Video"],
+    watchUrl: "https://www.justwatch.com/us/movie/the-lord-of-the-rings-the-fellowship-of-the-ring",
+    rating: 8.4,
+    moodProfile: { stress: 36, happiness: 78, complexity: 62, pace: 44 },
+    tags: ["epic", "fantasy", "uplifting"]
+  },
+  {
+    id: "313369",
+    title: "La La Land",
+    year: "2016",
+    poster: "https://image.tmdb.org/t/p/w780/uDO8zWDhfWwoFdKS4fzkUJt0Rf0.jpg",
+    overview: "An actress and a jazz musician fall in love while chasing fragile dreams in Los Angeles.",
+    hook: "Elegant, bittersweet, and emotionally luminous.",
+    providers: ["Netflix", "Prime Video"],
+    watchUrl: "https://www.justwatch.com/us/movie/la-la-land",
+    rating: 7.9,
+    moodProfile: { stress: 24, happiness: 72, complexity: 38, pace: 48 },
+    tags: ["bittersweet", "musical", "romance"]
+  },
+  {
+    id: "335984",
+    title: "Blade Runner 2049",
+    year: "2017",
+    poster: "https://image.tmdb.org/t/p/w780/gajva2L0rPYkEWjzgFlBXCAVBE5.jpg",
+    overview: "A blade runner uncovers a secret that threatens the fragile order of the future.",
+    hook: "Immersive, cerebral, and slow-burning in the best way.",
+    providers: ["Netflix", "Max"],
+    watchUrl: "https://www.justwatch.com/us/movie/blade-runner-2049",
+    rating: 8.0,
+    moodProfile: { stress: 42, happiness: 20, complexity: 92, pace: 32 },
+    tags: ["sci-fi", "slow-burn", "mind-bending"]
+  },
+  {
+    id: "11324",
+    title: "Shutter Island",
+    year: "2010",
+    poster: "https://image.tmdb.org/t/p/w780/52d7PyzNQxzxYF6xVJp4H7M9KzH.jpg",
+    overview: "A U.S. Marshal investigates a vanished patient on an isolated island asylum.",
+    hook: "Stormy paranoia with a dense psychological undertow.",
+    providers: ["Netflix", "Hulu"],
+    watchUrl: "https://www.justwatch.com/us/movie/shutter-island",
+    rating: 8.2,
+    moodProfile: { stress: 84, happiness: 12, complexity: 88, pace: 64 },
+    tags: ["thriller", "psychological", "mind-bending"]
+  },
+  {
+    id: "807",
+    title: "Se7en",
+    year: "1995",
+    poster: "https://image.tmdb.org/t/p/w780/6yoghtyTpznpBik8EngEmJskVUO.jpg",
+    overview: "Two detectives hunt a serial killer whose crimes are shaped by the seven deadly sins.",
+    hook: "Relentless dread for the darkest mood settings.",
+    providers: ["Netflix", "Max"],
+    watchUrl: "https://www.justwatch.com/us/movie/se7en",
+    rating: 8.4,
+    moodProfile: { stress: 94, happiness: 8, complexity: 70, pace: 74 },
+    tags: ["thriller", "dark", "crime"]
+  },
+  {
+    id: "12",
+    title: "Finding Nemo",
+    year: "2003",
+    poster: "https://image.tmdb.org/t/p/w780/eHuGQ10FUzK1mdOY69wF5pGgEf5.jpg",
+    overview: "A clownfish crosses the ocean to rescue his son.",
+    hook: "A warm, brightly paced reset when you want zero emotional armor.",
+    providers: ["Disney+"],
+    watchUrl: "https://www.justwatch.com/us/movie/finding-nemo",
+    rating: 7.8,
+    moodProfile: { stress: 14, happiness: 90, complexity: 18, pace: 56 },
+    tags: ["family", "uplifting", "easy-watch"]
+  },
+  {
+    id: "1578",
+    title: "Raging Bull",
+    year: "1980",
+    poster: "https://image.tmdb.org/t/p/w780/1MkB1TopiN3QYyQn8v7yQb5N4nu.jpg",
+    overview: "A ferocious boxer self-destructs inside and outside the ring.",
+    hook: "Heavy, bruising character cinema with real gravity.",
+    providers: ["Prime Video", "Apple TV+"],
+    watchUrl: "https://www.justwatch.com/us/movie/raging-bull",
+    rating: 8.1,
+    moodProfile: { stress: 70, happiness: 10, complexity: 58, pace: 46 },
+    tags: ["classic", "dark", "drama"]
+  },
+  {
+    id: "640",
+    title: "Catch Me If You Can",
+    year: "2002",
+    poster: "https://image.tmdb.org/t/p/w780/sj4pwh8O1eXSRM8dBYxpeqDCLW0.jpg",
+    overview: "A gifted con artist stays one step ahead of the FBI while reinventing himself.",
+    hook: "Effortless momentum with a bright, clever sheen.",
+    providers: ["Netflix", "Prime Video"],
+    watchUrl: "https://www.justwatch.com/us/movie/catch-me-if-you-can",
+    rating: 8.1,
+    moodProfile: { stress: 34, happiness: 68, complexity: 54, pace: 74 },
+    tags: ["fast", "crime", "uplifting"]
+  },
+  {
+    id: "510",
+    title: "One Flew Over the Cuckoo's Nest",
+    year: "1975",
+    poster: "https://image.tmdb.org/t/p/w780/3jcbDmRFiQ83drXNOvRDeKHxS0C.jpg",
+    overview: "A rebellious patient disrupts a rigid psychiatric ward.",
+    hook: "Sharp, humane, and emotionally layered without being cold.",
+    providers: ["Prime Video", "Max"],
+    watchUrl: "https://www.justwatch.com/us/movie/one-flew-over-the-cuckoos-nest",
+    rating: 8.4,
+    moodProfile: { stress: 44, happiness: 34, complexity: 66, pace: 40 },
+    tags: ["classic", "layered", "drama"]
+  },
+  {
+    id: "8078",
+    title: "Alien",
+    year: "1979",
+    poster: "https://image.tmdb.org/t/p/w780/vfrQk5IPloGg1v9Rzbh2Eg3VGyM.jpg",
+    overview: "A commercial spaceship crew is hunted by a lethal organism.",
+    hook: "Pure isolation horror with slow-burn pressure.",
+    providers: ["Hulu", "Disney+"],
+    watchUrl: "https://www.justwatch.com/us/movie/alien",
+    rating: 8.2,
+    moodProfile: { stress: 92, happiness: 10, complexity: 56, pace: 40 },
+    tags: ["horror", "slow-burn", "sci-fi"]
+  },
+  {
+    id: "37165",
+    title: "The Truman Show",
+    year: "1998",
+    poster: "https://image.tmdb.org/t/p/w780/vuza0WqY239yBXOadKlGwJsZJFE.jpg",
+    overview: "A man slowly discovers that his entire life is a global television fabrication.",
+    hook: "Bright on the surface, quietly existential underneath.",
+    providers: ["Netflix", "Apple TV+"],
+    watchUrl: "https://www.justwatch.com/us/movie/the-truman-show",
+    rating: 8.1,
+    moodProfile: { stress: 28, happiness: 62, complexity: 74, pace: 42 },
+    tags: ["mind-bending", "uplifting", "satire"]
   }
 ];
 
@@ -262,6 +431,8 @@ export function localRecommend(mood: Mood, selectedPlatforms: string[], skipped:
           watchUrl: buildWatchUrl(movie, provider),
           rating: movie.rating
         },
+        tags: movie.tags,
+        year: movie.year,
         providers: movie.providers,
         score
       };
@@ -271,9 +442,7 @@ export function localRecommend(mood: Mood, selectedPlatforms: string[], skipped:
     ? ranked.filter((entry) => entry.providers.some((provider) => activePlatforms.includes(provider)))
     : ranked;
 
-  const movies = platformFiltered
-    .sort((left, right) => right.score - left.score)
-    .slice(0, 8)
+  const movies = selectDiverseEntries(platformFiltered, 10)
     .map((entry) => entry.movie);
 
   return {
@@ -281,6 +450,14 @@ export function localRecommend(mood: Mood, selectedPlatforms: string[], skipped:
     movies
   };
 }
+
+type RankedEntry = {
+  movie: Movie;
+  providers: string[];
+  score: number;
+  tags: string[];
+  year: string;
+};
 
 function normalizeMood(mood: Mood): Mood {
   return {
@@ -346,6 +523,50 @@ function getTagBonus(tags: string[], mood: Mood) {
   }
 
   return bonus;
+}
+
+function selectDiverseEntries(entries: RankedEntry[], limit: number) {
+  const pool = [...entries].sort((left, right) => right.score - left.score);
+  const selected: RankedEntry[] = [];
+
+  while (pool.length && selected.length < limit) {
+    let bestIndex = 0;
+    let bestValue = Number.NEGATIVE_INFINITY;
+
+    for (let index = 0; index < pool.length; index += 1) {
+      const entry = pool[index];
+      const adjustedScore = entry.score - diversityPenalty(entry, selected);
+      if (adjustedScore > bestValue) {
+        bestValue = adjustedScore;
+        bestIndex = index;
+      }
+    }
+
+    selected.push(pool.splice(bestIndex, 1)[0]);
+  }
+
+  return selected;
+}
+
+function diversityPenalty(candidate: RankedEntry, selected: RankedEntry[]) {
+  if (!selected.length) {
+    return 0;
+  }
+
+  let penalty = 0;
+  const candidateDecade = `${candidate.year.slice(0, 3)}0`;
+
+  for (const entry of selected) {
+    const sharedTags = candidate.tags.filter((tag) => entry.tags.includes(tag)).length;
+    const sharedProviders = candidate.providers.filter((provider) => entry.providers.includes(provider)).length;
+    const sameDecade = `${entry.year.slice(0, 3)}0` === candidateDecade;
+
+    penalty += sharedTags * 7;
+    penalty += sharedProviders > 1 ? 2 : 0;
+    penalty += sameDecade ? 2 : 0;
+  }
+
+  return penalty;
 }
 
 function buildWatchUrl(movie: CuratedMovie, provider: string) {
