@@ -46,14 +46,20 @@ export async function POST(request: Request) {
     platforms,
     skipped: [...skipped]
   });
-  const canUseLiveDiscovery = Boolean(process.env.TMDB_API_KEY) && (platforms.length === 0 || Boolean(process.env.WATCHMODE_API_KEY));
+  const canUseLiveDiscovery = Boolean(getTmdbCredential()) && (platforms.length === 0 || Boolean(process.env.WATCHMODE_API_KEY));
 
   const querySpec = await createQuerySpec(mood, platforms, filters);
   const liveMovies = canUseLiveDiscovery
     ? await searchTmdb(querySpec, platforms, skipped)
     : [];
   const response =
-    letterboxdResults?.movies.length ? letterboxdResults : localResults.movies.length ? localResults : { query: querySpec.query, movies: liveMovies };
+    liveMovies.length
+      ? { query: querySpec.query, movies: liveMovies }
+      : letterboxdResults?.movies.length
+        ? letterboxdResults
+        : localResults.movies.length
+          ? localResults
+          : { query: querySpec.query, movies: liveMovies };
 
   return NextResponse.json({
     query: response.query,
@@ -154,7 +160,8 @@ function localQuerySpec(mood: Mood, filters: DiscoveryFilters) {
     country: filters.country !== "any" ? filters.country : "",
     yearFrom,
     yearTo,
-    voteCountGte: filters.obscurity > 70 ? 40 : filters.obscurity > 45 ? 120 : 250
+    voteCountGte: filters.obscurity > 82 ? 8 : filters.obscurity > 68 ? 20 : filters.obscurity > 45 ? 120 : 250,
+    pageWindow: filters.obscurity > 82 ? [5, 9] : filters.obscurity > 68 ? [3, 7] : filters.obscurity > 45 ? [2, 5] : [1, 3]
   };
 }
 
@@ -163,15 +170,22 @@ async function searchTmdb(
   platforms: string[],
   skipped: Set<string>
 ): Promise<MovieResult[]> {
+  const auth = getTmdbAuth();
+  if (!auth) {
+    return [];
+  }
+
   const params = new URLSearchParams({
-    api_key: process.env.TMDB_API_KEY || "",
     language: "en-US",
     sort_by: spec.sortBy,
     "vote_count.gte": String(spec.voteCountGte),
     "vote_average.gte": String(spec.minVoteAverage),
-    include_adult: "false",
-    page: "1"
+    include_adult: "false"
   });
+
+  for (const [key, value] of Object.entries(auth.queryParams)) {
+    params.set(key, value);
+  }
 
   if (spec.genres) {
     params.set("with_genres", spec.genres);
@@ -186,28 +200,42 @@ async function searchTmdb(
     params.set("primary_release_date.lte", `${spec.yearTo}-12-31`);
   }
 
-  const response = await fetch(`https://api.themoviedb.org/3/discover/movie?${params.toString()}`, {
-    next: { revalidate: 1800 }
-  });
+  const [pageFrom, pageTo] = spec.pageWindow;
+  const pages = Array.from({ length: pageTo - pageFrom + 1 }, (_, index) => pageFrom + index);
+  const responses = await Promise.all(
+    pages.map(async (page) => {
+      const pageParams = new URLSearchParams(params);
+      pageParams.set("page", String(page));
 
-  if (!response.ok) {
-    return [];
-  }
+      const response = await fetch(`https://api.themoviedb.org/3/discover/movie?${pageParams.toString()}`, {
+        headers: auth.headers,
+        next: { revalidate: 1800 }
+      });
 
-  const data = (await response.json()) as {
-    results: Array<{
-      id: number;
-      title: string;
-      release_date?: string;
-      poster_path?: string;
-      overview?: string;
-      vote_average?: number;
-    }>;
-  };
+      if (!response.ok) {
+        return [];
+      }
 
-  const candidates = data.results
-    .filter((movie) => movie.poster_path && !skipped.has(String(movie.id)))
-    .slice(0, 12);
+      const data = (await response.json()) as {
+        results: Array<{
+          id: number;
+          title: string;
+          release_date?: string;
+          poster_path?: string;
+          overview?: string;
+          vote_average?: number;
+          genre_ids?: number[];
+        }>;
+      };
+
+      return data.results;
+    })
+  );
+
+  const candidates = selectTmdbCandidates(
+    responses.flat().filter((movie) => movie.poster_path && !skipped.has(String(movie.id))),
+    spec
+  );
 
   const enriched = await Promise.all(
     candidates.map(async (movie) => {
@@ -217,7 +245,7 @@ async function searchTmdb(
         title: movie.title,
         year: movie.release_date?.slice(0, 4) || "Movie",
         countries: spec.country ? [spec.country] : [],
-        sourceLists: ["TMDB discovery fallback"],
+        sourceLists: process.env.OPENAI_API_KEY ? ["TMDB Discover", "OpenAI Mood Query"] : ["TMDB Discover"],
         poster: `https://image.tmdb.org/t/p/w780${movie.poster_path}`,
         overview: movie.overview || "",
         matchReason: buildReason(spec),
@@ -234,6 +262,79 @@ async function searchTmdb(
 
 function buildReason(spec: ReturnType<typeof localQuerySpec>) {
   return `Matched for ${spec.query.toLowerCase()} with ${spec.keywords.replaceAll(",", ", ")} signals.`;
+}
+
+function selectTmdbCandidates(
+  movies: Array<{
+    id: number;
+    title: string;
+    release_date?: string;
+    poster_path?: string;
+    overview?: string;
+    vote_average?: number;
+    genre_ids?: number[];
+  }>,
+  spec: ReturnType<typeof localQuerySpec>
+) {
+  const picked: typeof movies = [];
+  const seenIds = new Set<number>();
+  const seenGenres = new Map<number, number>();
+
+  for (const movie of movies) {
+    if (seenIds.has(movie.id)) {
+      continue;
+    }
+
+    const genrePenalty = (movie.genre_ids || []).reduce((total, genreId) => total + (seenGenres.get(genreId) || 0), 0);
+    const prefersObscureSpread = spec.voteCountGte <= 20;
+    const canTake = prefersObscureSpread ? genrePenalty < 4 : genrePenalty < 7;
+
+    if (!canTake && picked.length < 8) {
+      continue;
+    }
+
+    seenIds.add(movie.id);
+    picked.push(movie);
+
+    for (const genreId of movie.genre_ids || []) {
+      seenGenres.set(genreId, (seenGenres.get(genreId) || 0) + 1);
+    }
+
+    if (picked.length >= 12) {
+      break;
+    }
+  }
+
+  return picked;
+}
+
+function getTmdbCredential() {
+  return process.env.TMDB_BEARER_TOKEN || process.env.TMDB_API_KEY || "";
+}
+
+function getTmdbAuth() {
+  const raw = getTmdbCredential();
+  if (!raw) {
+    return null;
+  }
+
+  const isBearer = raw.startsWith("eyJ") || raw.includes(".") || raw.startsWith("tmdb_");
+  return isBearer
+    ? {
+        headers: {
+          Authorization: `Bearer ${raw}`,
+          accept: "application/json"
+        },
+        queryParams: {}
+      }
+    : {
+        headers: {
+          accept: "application/json"
+        },
+        queryParams: {
+          api_key: raw
+        }
+      };
 }
 
 function eraToRange(era: string) {

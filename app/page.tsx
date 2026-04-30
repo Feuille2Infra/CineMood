@@ -91,7 +91,7 @@ export default function Home() {
       const data = localRecommend(nextMood, nextPlatforms, nextSkipped, nextFilters);
       applyResults(
         data,
-        !data.movies.length ? "No matches for this specific mood." : "Live APIs unavailable, using Letterboxd-seeded mood matching."
+        !data.movies.length ? "No matches for this specific mood." : "Live APIs unavailable, using local mood matching."
       );
     } finally {
       setLoading(false);
