@@ -27,6 +27,19 @@ jobs:
         with:
           node-version: 20
 
+      - name: Create environment file
+        run: |
+          cat <<EOF > .env.local
+          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL=${{ secrets.OPENAI_MODEL }}
+          TMDB_API_KEY=${{ secrets.TMDB_API_KEY }}
+          TMDB_BEARER_TOKEN=${{ secrets.TMDB_BEARER_TOKEN }}
+          WATCHMODE_API_KEY=${{ secrets.WATCHMODE_API_KEY }}
+          LETTERBOXD_CLIENT_ID=${{ secrets.LETTERBOXD_CLIENT_ID }}
+          LETTERBOXD_CLIENT_SECRET=${{ secrets.LETTERBOXD_CLIENT_SECRET }}
+          LETTERBOXD_USERNAME=${{ secrets.LETTERBOXD_USERNAME }}
+          EOF
+
       - name: Install dependencies
         run: npm install
 
