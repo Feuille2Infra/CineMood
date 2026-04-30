@@ -35,6 +35,19 @@ type MovieResult = {
 };
 
 const tmdbResultLimit = 24;
+type TmdbDiscoverPage = {
+  totalPages: number;
+  totalResults: number;
+  results: Array<{
+    id: number;
+    title: string;
+    release_date?: string;
+    poster_path?: string;
+    overview?: string;
+    vote_average?: number;
+    genre_ids?: number[];
+  }>;
+};
 
 export async function POST(request: Request) {
   const body = (await request.json()) as RecommendRequest;
@@ -241,7 +254,11 @@ async function searchTmdb(
       });
 
       if (!response.ok) {
-        return [];
+        return {
+          totalPages: 0,
+          totalResults: 0,
+          results: []
+        } satisfies TmdbDiscoverPage;
       }
 
       const data = (await response.json()) as {
@@ -262,7 +279,7 @@ async function searchTmdb(
         totalPages: data.total_pages || 0,
         totalResults: data.total_results || 0,
         results: data.results
-      };
+      } satisfies TmdbDiscoverPage;
     })
   );
 

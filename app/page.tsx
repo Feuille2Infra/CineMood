@@ -46,7 +46,7 @@ export default function Home() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const [skipped, setSkipped] = useState<string[]>([]);
-  const moodSearchTimeout = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const moodSearchTimeout = useRef<number | null>(null);
 
   const activeMovie = movies[0];
   const dragX = useMotionValue(0);
@@ -66,14 +66,14 @@ export default function Home() {
   useEffect(() => {
     return () => {
       if (moodSearchTimeout.current !== null) {
-        window.clearTimeout(moodSearchTimeout.current);
+        clearTimeout(moodSearchTimeout.current);
       }
     };
   }, []);
 
   function clearPendingMoodSearch() {
     if (moodSearchTimeout.current !== null) {
-      window.clearTimeout(moodSearchTimeout.current);
+      clearTimeout(moodSearchTimeout.current);
       moodSearchTimeout.current = null;
     }
   }
