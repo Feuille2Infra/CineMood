@@ -79,6 +79,7 @@ export const defaultFilters: DiscoveryFilters = {
 };
 
 const defaultPlatforms = ["Netflix", "Prime Video", "Max"];
+const localResultLimit = 24;
 
 const curatedMovies: CuratedMovie[] = [
   {
@@ -730,7 +731,7 @@ export function localRecommend(
     ? ranked.filter((entry) => entry.providers.some((provider) => activePlatforms.includes(provider)))
     : ranked;
 
-  const movies = selectDiverseEntries(platformFiltered, 10)
+  const movies = selectDiverseEntries(platformFiltered, localResultLimit)
     .map((entry) => entry.movie);
 
   return {

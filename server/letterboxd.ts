@@ -49,6 +49,7 @@ const OFFICIAL_LIST_NAMES = [
   "Top 100 Taiwanese Films",
   "Top 100 Anime Films"
 ];
+const letterboxdResultLimit = 24;
 
 let tokenCache: { value: string; expiresAt: number } | null = null;
 let poolCache: { value: SeedFilm[]; expiresAt: number } | null = null;
@@ -83,8 +84,8 @@ export async function getLetterboxdRecommendations(args: {
   const enriched: Movie[] = [];
   const seen = new Set<string>();
 
-  for (let index = 0; index < ranked.length && enriched.length < 10; index += 18) {
-    const chunk = ranked.slice(index, index + 18);
+  for (let index = 0; index < ranked.length && enriched.length < letterboxdResultLimit; index += 24) {
+    const chunk = ranked.slice(index, index + 24);
     const resolved = await Promise.all(chunk.map(({ movie }) => enrichMovie(movie, args.mood, args.platforms)));
 
     for (const movie of resolved) {
@@ -98,7 +99,7 @@ export async function getLetterboxdRecommendations(args: {
       seen.add(movie.id);
       enriched.push(movie);
 
-      if (enriched.length >= 10) {
+      if (enriched.length >= letterboxdResultLimit) {
         break;
       }
     }
@@ -142,7 +143,7 @@ async function getSeedPool() {
   const selectedUserLists = userLists
     .slice()
     .sort((left, right) => getUserListPriority(right.name) - getUserListPriority(left.name))
-    .slice(0, 12);
+    .slice(0, 20);
 
   const seedLists = [...selectedOfficialLists, ...selectedUserLists];
   const seedEntries = await Promise.all(
@@ -299,7 +300,7 @@ async function getListEntries(token: string, listId: string) {
   const items: LetterboxdFilm[] = [];
   let cursor = "";
 
-  while (items.length < 220) {
+  while (items.length < 400) {
     const response = await apiGet<{
       next?: string;
       items?: Array<{ film: LetterboxdFilm }>;

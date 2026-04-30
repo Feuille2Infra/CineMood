@@ -33,6 +33,8 @@ type MovieResult = {
   rating: number;
 };
 
+const tmdbResultLimit = 24;
+
 export async function POST(request: Request) {
   const body = (await request.json()) as RecommendRequest;
   const mood = normalizeMood(body.mood);
@@ -160,8 +162,8 @@ function localQuerySpec(mood: Mood, filters: DiscoveryFilters) {
     country: filters.country !== "any" ? filters.country : "",
     yearFrom,
     yearTo,
-    voteCountGte: filters.obscurity > 82 ? 8 : filters.obscurity > 68 ? 20 : filters.obscurity > 45 ? 120 : 250,
-    pageWindow: filters.obscurity > 82 ? [5, 9] : filters.obscurity > 68 ? [3, 7] : filters.obscurity > 45 ? [2, 5] : [1, 3]
+    voteCountGte: filters.obscurity > 82 ? 5 : filters.obscurity > 68 ? 12 : filters.obscurity > 45 ? 80 : 250,
+    pageWindow: filters.obscurity > 82 ? [6, 12] : filters.obscurity > 68 ? [3, 8] : filters.obscurity > 45 ? [2, 5] : [1, 4]
   };
 }
 
@@ -286,10 +288,10 @@ function selectTmdbCandidates(
     }
 
     const genrePenalty = (movie.genre_ids || []).reduce((total, genreId) => total + (seenGenres.get(genreId) || 0), 0);
-    const prefersObscureSpread = spec.voteCountGte <= 20;
-    const canTake = prefersObscureSpread ? genrePenalty < 4 : genrePenalty < 7;
+    const prefersObscureSpread = spec.voteCountGte <= 12;
+    const canTake = prefersObscureSpread ? genrePenalty < 6 : genrePenalty < 10;
 
-    if (!canTake && picked.length < 8) {
+    if (!canTake && picked.length < 16) {
       continue;
     }
 
@@ -300,7 +302,7 @@ function selectTmdbCandidates(
       seenGenres.set(genreId, (seenGenres.get(genreId) || 0) + 1);
     }
 
-    if (picked.length >= 12) {
+    if (picked.length >= tmdbResultLimit) {
       break;
     }
   }
