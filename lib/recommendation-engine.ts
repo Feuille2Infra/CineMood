@@ -34,6 +34,8 @@ type CuratedMovie = Omit<Movie, "provider" | "matchReason" | "availability" | "c
 export type SearchResponse = {
   query: string;
   movies: Movie[];
+  totalMatches: number;
+  nextCursor: string | null;
 };
 
 export const platforms = ["Netflix", "Disney+", "Prime Video", "Max", "Hulu", "Apple TV+"];
@@ -677,7 +679,9 @@ export function localRecommend(
   mood: Mood,
   selectedPlatforms: string[],
   skipped: string[],
-  filters: DiscoveryFilters = defaultFilters
+  filters: DiscoveryFilters = defaultFilters,
+  cursor = 0,
+  limit = localResultLimit
 ): SearchResponse {
   const normalizedMood = normalizeMood(mood);
   const skippedSet = new Set(skipped);
@@ -731,12 +735,16 @@ export function localRecommend(
     ? ranked.filter((entry) => entry.providers.some((provider) => activePlatforms.includes(provider)))
     : ranked;
 
-  const movies = selectDiverseEntries(platformFiltered, localResultLimit)
+  const allMovies = selectDiverseEntries(platformFiltered, platformFiltered.length)
     .map((entry) => entry.movie);
+  const start = cursor * limit;
+  const movies = allMovies.slice(start, start + limit);
 
   return {
     query: buildQuery(normalizedMood, selectedPlatforms, filters),
-    movies
+    movies,
+    totalMatches: allMovies.length,
+    nextCursor: start + limit < allMovies.length ? String(cursor + 1) : null
   };
 }
 

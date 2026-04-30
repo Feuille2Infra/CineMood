@@ -40,7 +40,10 @@ export default function Home() {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(["Netflix", "Prime Video", "Max"]);
   const [movies, setMovies] = useState<Movie[]>(initialRecommendations.movies);
   const [query, setQuery] = useState(initialRecommendations.query);
+  const [totalMatches, setTotalMatches] = useState(initialRecommendations.totalMatches);
+  const [nextCursor, setNextCursor] = useState(initialRecommendations.nextCursor);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const [skipped, setSkipped] = useState<string[]>([]);
 
@@ -63,22 +66,28 @@ export default function Home() {
     nextMood: Record<MoodKey, number>,
     nextPlatforms: string[],
     nextSkipped: string[],
-    nextFilters: DiscoveryFilters
+    nextFilters: DiscoveryFilters,
+    cursor: string | null = null,
+    append = false
   ) {
-    setLoading(true);
-    setError("");
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+      setError("");
+    }
 
     try {
       if (useStaticRecommendations) {
-        const data = localRecommend(nextMood, nextPlatforms, nextSkipped, nextFilters);
-        applyResults(data);
+        const data = localRecommend(nextMood, nextPlatforms, nextSkipped, nextFilters, Number(cursor) || 0);
+        applyResults(data, "", append);
         return;
       }
 
       const response = await fetch("/api/recommend", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mood: nextMood, platforms: nextPlatforms, skipped: nextSkipped, filters: nextFilters })
+        body: JSON.stringify({ mood: nextMood, platforms: nextPlatforms, skipped: nextSkipped, filters: nextFilters, cursor })
       });
 
       if (!response.ok) {
@@ -86,23 +95,37 @@ export default function Home() {
       }
 
       const data = (await response.json()) as SearchResponse;
-      applyResults(data);
+      applyResults(data, "", append);
     } catch {
-      const data = localRecommend(nextMood, nextPlatforms, nextSkipped, nextFilters);
+      const data = localRecommend(nextMood, nextPlatforms, nextSkipped, nextFilters, Number(cursor) || 0);
       applyResults(
         data,
-        !data.movies.length ? "No matches for this specific mood." : "Live APIs unavailable, using local mood matching."
+        !data.movies.length ? "No matches for this specific mood." : "Live APIs unavailable, using local mood matching.",
+        append
       );
     } finally {
-      setLoading(false);
+      if (append) {
+        setLoadingMore(false);
+      } else {
+        setLoading(false);
+      }
     }
   }
 
-  function applyResults(data: SearchResponse, fallbackError = "") {
-    setMovies(data.movies);
-    setQuery(data.query);
+  function applyResults(data: SearchResponse, fallbackError = "", append = false) {
+    setMovies((current) => {
+      if (!append) {
+        return data.movies;
+      }
 
-    if (!data.movies.length) {
+      const seen = new Set(current.map((movie) => movie.id));
+      return [...current, ...data.movies.filter((movie) => !seen.has(movie.id))];
+    });
+    setQuery(data.query);
+    setTotalMatches(data.totalMatches);
+    setNextCursor(data.nextCursor);
+
+    if (!data.movies.length && !append) {
       setError("No matches for this specific mood.");
       return;
     }
@@ -111,7 +134,7 @@ export default function Home() {
   }
 
   function findMovies() {
-    runSearch(mood, selectedPlatforms, skipped, filters);
+    runSearch(mood, selectedPlatforms, skipped, filters, null, false);
   }
 
   function surpriseMe() {
@@ -127,7 +150,7 @@ export default function Home() {
     setSelectedPlatforms([]);
     setSkipped([]);
     dragX.set(0);
-    runSearch(surpriseMood, [], [], defaultFilters);
+    runSearch(surpriseMood, [], [], defaultFilters, null, false);
   }
 
   function randomValue() {
@@ -142,7 +165,7 @@ export default function Home() {
     setSelectedPlatforms(nextPlatforms);
     setSkipped([]);
     dragX.set(0);
-    runSearch(mood, nextPlatforms, [], filters);
+    runSearch(mood, nextPlatforms, [], filters, null, false);
   }
 
   function updateCountry(country: string) {
@@ -150,7 +173,7 @@ export default function Home() {
     setFilters(nextFilters);
     setSkipped([]);
     dragX.set(0);
-    runSearch(mood, selectedPlatforms, [], nextFilters);
+    runSearch(mood, selectedPlatforms, [], nextFilters, null, false);
   }
 
   function updateEra(era: string) {
@@ -158,7 +181,7 @@ export default function Home() {
     setFilters(nextFilters);
     setSkipped([]);
     dragX.set(0);
-    runSearch(mood, selectedPlatforms, [], nextFilters);
+    runSearch(mood, selectedPlatforms, [], nextFilters, null, false);
   }
 
   function updateObscurity(obscurity: number) {
@@ -166,7 +189,15 @@ export default function Home() {
     setFilters(nextFilters);
     setSkipped([]);
     dragX.set(0);
-    runSearch(mood, selectedPlatforms, [], nextFilters);
+    runSearch(mood, selectedPlatforms, [], nextFilters, null, false);
+  }
+
+  function loadMore() {
+    if (!nextCursor || loadingMore || loading) {
+      return;
+    }
+
+    runSearch(mood, selectedPlatforms, skipped, filters, nextCursor, true);
   }
 
   function skipMovie(movie: Movie) {
@@ -424,7 +455,9 @@ export default function Home() {
                 <p className="text-xs uppercase tracking-[0.28em] text-slate-500">Results</p>
                 <h3 className="mt-2 text-2xl font-bold text-white">Your film strip</h3>
               </div>
-              <p className="font-mono text-xs text-slate-400">{movies.length.toString().padStart(2, "0")} matches</p>
+              <p className="font-mono text-xs text-slate-400">
+                {movies.length.toString().padStart(2, "0")} / {totalMatches.toString().padStart(2, "0")} loaded
+              </p>
             </div>
 
             <div className="hidden lg:block">
@@ -474,6 +507,19 @@ export default function Home() {
                 )}
               </AnimatePresence>
             </div>
+
+            {nextCursor ? (
+              <div className="mt-6 flex justify-center">
+                <button
+                  className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.05] px-5 py-3 font-semibold text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={loadingMore || loading}
+                  onClick={loadMore}
+                >
+                  {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-cinema-blue" />}
+                  Load more films
+                </button>
+              </div>
+            ) : null}
           </section>
         </section>
       </section>

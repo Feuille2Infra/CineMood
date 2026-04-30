@@ -59,6 +59,7 @@ export async function getLetterboxdRecommendations(args: {
   filters: DiscoveryFilters;
   platforms: string[];
   skipped: string[];
+  cursor: number;
 }): Promise<SearchResponse | null> {
   if (!process.env.LETTERBOXD_CLIENT_ID || !process.env.LETTERBOXD_CLIENT_SECRET) {
     return null;
@@ -84,7 +85,9 @@ export async function getLetterboxdRecommendations(args: {
   const enriched: Movie[] = [];
   const seen = new Set<string>();
 
-  for (let index = 0; index < ranked.length && enriched.length < letterboxdResultLimit; index += 24) {
+  const startIndex = args.cursor * letterboxdResultLimit;
+
+  for (let index = startIndex; index < ranked.length && enriched.length < letterboxdResultLimit; index += 24) {
     const chunk = ranked.slice(index, index + 24);
     const resolved = await Promise.all(chunk.map(({ movie }) => enrichMovie(movie, args.mood, args.platforms)));
 
@@ -111,7 +114,9 @@ export async function getLetterboxdRecommendations(args: {
 
   return {
     query: buildLetterboxdQuery(args.filters, args.platforms, poolData.length),
-    movies: enriched
+    movies: enriched,
+    totalMatches: ranked.length,
+    nextCursor: startIndex + letterboxdResultLimit < ranked.length ? String(args.cursor + 1) : null
   };
 }
 

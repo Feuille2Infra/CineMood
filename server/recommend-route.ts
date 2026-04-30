@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
-import { defaultFilters, localRecommend, type DiscoveryFilters } from "@/lib/recommendation-engine";
+import { defaultFilters, localRecommend, type DiscoveryFilters, type SearchResponse } from "@/lib/recommendation-engine";
 import { getLetterboxdRecommendations } from "@/server/letterboxd";
 import { getAvailability } from "@/server/streaming";
 
@@ -16,6 +16,7 @@ type RecommendRequest = {
   platforms: string[];
   skipped: string[];
   filters?: DiscoveryFilters;
+  cursor?: string | null;
 };
 
 type MovieResult = {
@@ -41,32 +42,36 @@ export async function POST(request: Request) {
   const platforms = Array.isArray(body.platforms) ? body.platforms : [];
   const skipped = new Set(Array.isArray(body.skipped) ? body.skipped : []);
   const filters = normalizeFilters(body.filters);
-  const localResults = localRecommend(mood, platforms, [...skipped], filters);
+  const cursor = normalizeCursor(body.cursor);
+  const localResults = localRecommend(mood, platforms, [...skipped], filters, cursor);
   const letterboxdResults = await getLetterboxdRecommendations({
     mood,
     filters,
     platforms,
-    skipped: [...skipped]
+    skipped: [...skipped],
+    cursor
   });
   const canUseLiveDiscovery = Boolean(getTmdbCredential()) && (platforms.length === 0 || Boolean(process.env.WATCHMODE_API_KEY));
 
   const querySpec = await createQuerySpec(mood, platforms, filters);
-  const liveMovies = canUseLiveDiscovery
-    ? await searchTmdb(querySpec, platforms, skipped)
-    : [];
-  const response =
-    liveMovies.length
-      ? { query: querySpec.query, movies: liveMovies }
+  const liveResults = canUseLiveDiscovery
+    ? await searchTmdb(querySpec, platforms, skipped, cursor)
+    : {
+        query: querySpec.query,
+        movies: [],
+        totalMatches: 0,
+        nextCursor: null
+      };
+  const response: SearchResponse =
+    liveResults.movies.length
+      ? liveResults
       : letterboxdResults?.movies.length
         ? letterboxdResults
         : localResults.movies.length
           ? localResults
-          : { query: querySpec.query, movies: liveMovies };
+          : liveResults;
 
-  return NextResponse.json({
-    query: response.query,
-    movies: response.movies
-  });
+  return NextResponse.json(response);
 }
 
 function normalizeMood(mood: Mood): Mood {
@@ -80,6 +85,10 @@ function normalizeMood(mood: Mood): Mood {
 
 function clamp(value: number) {
   return Math.max(0, Math.min(100, Number(value) || 0));
+}
+
+function normalizeCursor(value?: string | null) {
+  return Math.max(0, Number(value) || 0);
 }
 
 function normalizeFilters(filters?: DiscoveryFilters): DiscoveryFilters {
@@ -170,11 +179,17 @@ function localQuerySpec(mood: Mood, filters: DiscoveryFilters) {
 async function searchTmdb(
   spec: ReturnType<typeof localQuerySpec>,
   platforms: string[],
-  skipped: Set<string>
-): Promise<MovieResult[]> {
+  skipped: Set<string>,
+  cursor: number
+): Promise<SearchResponse> {
   const auth = getTmdbAuth();
   if (!auth) {
-    return [];
+    return {
+      query: spec.query,
+      movies: [],
+      totalMatches: 0,
+      nextCursor: null
+    };
   }
 
   const params = new URLSearchParams({
@@ -203,7 +218,18 @@ async function searchTmdb(
   }
 
   const [pageFrom, pageTo] = spec.pageWindow;
-  const pages = Array.from({ length: pageTo - pageFrom + 1 }, (_, index) => pageFrom + index);
+  const pageSpan = pageTo - pageFrom + 1;
+  const startPage = pageFrom + cursor * pageSpan;
+  const endPage = Math.min(startPage + pageSpan - 1, 500);
+  const pages = Array.from({ length: Math.max(0, endPage - startPage + 1) }, (_, index) => startPage + index);
+  if (!pages.length) {
+    return {
+      query: spec.query,
+      movies: [],
+      totalMatches: 0,
+      nextCursor: null
+    };
+  }
   const responses = await Promise.all(
     pages.map(async (page) => {
       const pageParams = new URLSearchParams(params);
@@ -219,6 +245,8 @@ async function searchTmdb(
       }
 
       const data = (await response.json()) as {
+        total_pages?: number;
+        total_results?: number;
         results: Array<{
           id: number;
           title: string;
@@ -230,12 +258,24 @@ async function searchTmdb(
         }>;
       };
 
-      return data.results;
+      return {
+        totalPages: data.total_pages || 0,
+        totalResults: data.total_results || 0,
+        results: data.results
+      };
     })
   );
 
+  const totalPages = Math.min(
+    responses.find((response) => response.totalPages > 0)?.totalPages || 0,
+    500
+  );
+  const totalMatches = Math.min(
+    responses.find((response) => response.totalResults > 0)?.totalResults || 0,
+    10000
+  );
   const candidates = selectTmdbCandidates(
-    responses.flat().filter((movie) => movie.poster_path && !skipped.has(String(movie.id))),
+    responses.flatMap((response) => response.results).filter((movie) => movie.poster_path && !skipped.has(String(movie.id))),
     spec
   );
 
@@ -259,7 +299,12 @@ async function searchTmdb(
     })
   );
 
-  return enriched;
+  return {
+    query: spec.query,
+    movies: enriched,
+    totalMatches,
+    nextCursor: endPage < totalPages ? String(cursor + 1) : null
+  };
 }
 
 function buildReason(spec: ReturnType<typeof localQuerySpec>) {
