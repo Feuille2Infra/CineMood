@@ -9,7 +9,7 @@ import {
 } from "framer-motion";
 import { Clapperboard, Loader2, Play, Search, Shuffle, Sparkles, ThumbsDown } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   countryOptions,
   defaultFilters,
@@ -46,7 +46,6 @@ export default function Home() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const [skipped, setSkipped] = useState<string[]>([]);
-  const moodSearchTimeout = useRef<number | null>(null);
 
   const activeMovie = movies[0];
   const dragX = useMotionValue(0);
@@ -63,21 +62,6 @@ export default function Home() {
   const complexityGlow = 0.18 + mood.complexity / 360;
   const tearGlow = 0.12 + mood.happiness / 420;
 
-  useEffect(() => {
-    return () => {
-      if (moodSearchTimeout.current !== null) {
-        clearTimeout(moodSearchTimeout.current);
-      }
-    };
-  }, []);
-
-  function clearPendingMoodSearch() {
-    if (moodSearchTimeout.current !== null) {
-      clearTimeout(moodSearchTimeout.current);
-      moodSearchTimeout.current = null;
-    }
-  }
-
   async function runSearch(
     nextMood: Record<MoodKey, number>,
     nextPlatforms: string[],
@@ -86,10 +70,6 @@ export default function Home() {
     cursor: string | null = null,
     append = false
   ) {
-    if (!append) {
-      clearPendingMoodSearch();
-    }
-
     if (append) {
       setLoadingMore(true);
     } else {
@@ -209,7 +189,6 @@ export default function Home() {
     setFilters(nextFilters);
     setSkipped([]);
     dragX.set(0);
-    runSearch(mood, selectedPlatforms, [], nextFilters, null, false);
   }
 
   function updateMoodValue(key: MoodKey, value: number) {
@@ -217,10 +196,10 @@ export default function Home() {
     setMood(nextMood);
     setSkipped([]);
     dragX.set(0);
-    clearPendingMoodSearch();
-    moodSearchTimeout.current = window.setTimeout(() => {
-      runSearch(nextMood, selectedPlatforms, [], filters, null, false);
-    }, 180);
+  }
+
+  function commitSliderSearch() {
+    runSearch(mood, selectedPlatforms, [], filters, null, false);
   }
 
   function loadMore() {
@@ -342,6 +321,8 @@ export default function Home() {
                             className="cinema-slider"
                             max={100}
                             min={0}
+                            onKeyUp={commitSliderSearch}
+                            onPointerUp={commitSliderSearch}
                             style={{ "--slider-color": slider.color } as CSSProperties}
                             type="range"
                             value={mood[slider.key]}
@@ -428,6 +409,8 @@ export default function Home() {
                             className="cinema-slider"
                             max={100}
                             min={0}
+                            onKeyUp={commitSliderSearch}
+                            onPointerUp={commitSliderSearch}
                             style={{ "--slider-color": "#00D1FF" } as CSSProperties}
                             type="range"
                             value={filters.obscurity}
