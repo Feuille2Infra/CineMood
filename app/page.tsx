@@ -299,7 +299,7 @@ export default function Home() {
           <div className="relative mt-10 overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.05] p-5 shadow-glass backdrop-blur-2xl sm:p-6 lg:p-8">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_40%),linear-gradient(135deg,_rgba(255,255,255,0.04),_rgba(255,255,255,0.01))]" />
             <div className="relative">
-              <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+              <div className="grid gap-5 lg:grid-cols-[0.92fr_1.08fr] lg:items-start">
                 <div>
                   <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                     <div>
@@ -356,129 +356,168 @@ export default function Home() {
                       </motion.div>
                     ))}
                   </div>
+
+                  <div className="mt-5 flex flex-col justify-between rounded-[1.75rem] border border-white/10 bg-black/20 p-5 backdrop-blur-xl">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.28em] text-slate-400">Platforms</p>
+                      <h3 className="mt-2 text-xl font-semibold text-white">Watch on my platforms</h3>
+                      <div className="mt-5 flex flex-wrap gap-2">
+                        {platforms.map((platform) => {
+                          const active = selectedPlatforms.includes(platform);
+                          return (
+                            <button
+                              key={platform}
+                              className={`rounded-full border px-4 py-2 text-sm transition ${
+                                active
+                                  ? "border-cinema-red/40 bg-cinema-red/20 text-white shadow-redglow"
+                                  : "border-white/10 bg-white/[0.03] text-slate-300 hover:border-white/20"
+                              }`}
+                              onClick={() => togglePlatform(platform)}
+                            >
+                              {platform}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                        <label className="block">
+                          <span className="mb-2 block text-[11px] uppercase tracking-[0.24em] text-slate-500">Country</span>
+                          <select
+                            className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-cinema-blue/40"
+                            value={filters.country}
+                            onChange={(event) => updateCountry(event.target.value)}
+                          >
+                            {countryOptions.map((option) => (
+                              <option key={option.value} className="bg-zinc-950" value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        <label className="block">
+                          <span className="mb-2 block text-[11px] uppercase tracking-[0.24em] text-slate-500">Era</span>
+                          <select
+                            className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-cinema-blue/40"
+                            value={filters.era}
+                            onChange={(event) => updateEra(event.target.value)}
+                          >
+                            {eraOptions.map((option) => (
+                              <option key={option.value} className="bg-zinc-950" value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+
+                      <div className="mt-6 rounded-3xl border border-white/10 bg-white/[0.04] p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-white">Deep Cuts</p>
+                            <p className="mt-1 text-xs text-slate-400">Push the engine toward much rarer picks.</p>
+                          </div>
+                          <div className="rounded-full bg-cinema-blue/10 px-3 py-1 font-mono text-sm text-cinema-blue">
+                            {filters.obscurity}
+                          </div>
+                        </div>
+                        <div className="mt-5">
+                          <input
+                            aria-label="Deep cuts level"
+                            className="cinema-slider"
+                            max={100}
+                            min={0}
+                            style={{ "--slider-color": "#00D1FF" } as CSSProperties}
+                            type="range"
+                            value={filters.obscurity}
+                            onChange={(event) => updateObscurity(Number(event.target.value))}
+                          />
+                        </div>
+                        <div className="mt-3 flex items-center justify-between text-[11px] uppercase tracking-[0.22em] text-slate-500">
+                          <span>Accessible</span>
+                          <span>Obscure</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.04] p-4">
+                      <p className="text-xs uppercase tracking-[0.28em] text-slate-500">Discovery prompt</p>
+                      <p className="mt-3 text-sm leading-6 text-slate-200">{query}</p>
+                      <p className="mt-3 text-[11px] uppercase tracking-[0.24em] text-slate-500">
+                        {describeSeedPool(filters)}
+                      </p>
+                    </div>
+
+                    <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                      <motion.button
+                        animate={{
+                          boxShadow: `0 0 ${28 + intensity}px rgba(229, 9, 20, ${0.14 + intensity / 420})`
+                        }}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-cinema-red px-5 py-4 font-bold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={loading}
+                        onClick={findMovies}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}
+                        Find my Match
+                      </motion.button>
+                      <button
+                        className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-4 font-semibold text-slate-200 transition hover:border-white/20 hover:bg-white/[0.08]"
+                        onClick={surpriseMe}
+                      >
+                        <Shuffle className="h-4 w-4 text-cinema-blue" />
+                        Surprise Me
+                      </button>
+                    </div>
+
+                    {error ? <p className="mt-4 text-sm text-red-300">{error}</p> : null}
+                  </div>
                 </div>
 
-                <div className="flex flex-col justify-between rounded-[1.75rem] border border-white/10 bg-black/20 p-5 backdrop-blur-xl">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.28em] text-slate-400">Platforms</p>
-                    <h3 className="mt-2 text-xl font-semibold text-white">Watch on my platforms</h3>
-                    <div className="mt-5 flex flex-wrap gap-2">
-                      {platforms.map((platform) => {
-                        const active = selectedPlatforms.includes(platform);
-                        return (
-                          <button
-                            key={platform}
-                            className={`rounded-full border px-4 py-2 text-sm transition ${
-                              active
-                                ? "border-cinema-red/40 bg-cinema-red/20 text-white shadow-redglow"
-                                : "border-white/10 bg-white/[0.03] text-slate-300 hover:border-white/20"
-                            }`}
-                            onClick={() => togglePlatform(platform)}
-                          >
-                            {platform}
-                          </button>
-                        );
-                      })}
+                <section className="hidden lg:flex lg:min-h-[52rem] lg:flex-col rounded-[1.75rem] border border-white/10 bg-black/20 p-5 backdrop-blur-xl">
+                  <div className="mb-4 flex items-end justify-between gap-4">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.28em] text-slate-500">Results</p>
+                      <h3 className="mt-2 text-2xl font-bold text-white">Your film strip</h3>
                     </div>
-
-                    <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                      <label className="block">
-                        <span className="mb-2 block text-[11px] uppercase tracking-[0.24em] text-slate-500">Country</span>
-                        <select
-                          className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-cinema-blue/40"
-                          value={filters.country}
-                          onChange={(event) => updateCountry(event.target.value)}
-                        >
-                          {countryOptions.map((option) => (
-                            <option key={option.value} className="bg-zinc-950" value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-
-                      <label className="block">
-                        <span className="mb-2 block text-[11px] uppercase tracking-[0.24em] text-slate-500">Era</span>
-                        <select
-                          className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-cinema-blue/40"
-                          value={filters.era}
-                          onChange={(event) => updateEra(event.target.value)}
-                        >
-                          {eraOptions.map((option) => (
-                            <option key={option.value} className="bg-zinc-950" value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-
-                    <div className="mt-6 rounded-3xl border border-white/10 bg-white/[0.04] p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-white">Deep Cuts</p>
-                          <p className="mt-1 text-xs text-slate-400">Push the engine toward much rarer picks.</p>
-                        </div>
-                        <div className="rounded-full bg-cinema-blue/10 px-3 py-1 font-mono text-sm text-cinema-blue">
-                          {filters.obscurity}
-                        </div>
-                      </div>
-                      <div className="mt-5">
-                        <input
-                          aria-label="Deep cuts level"
-                          className="cinema-slider"
-                          max={100}
-                          min={0}
-                          style={{ "--slider-color": "#00D1FF" } as CSSProperties}
-                          type="range"
-                          value={filters.obscurity}
-                          onChange={(event) => updateObscurity(Number(event.target.value))}
-                        />
-                      </div>
-                      <div className="mt-3 flex items-center justify-between text-[11px] uppercase tracking-[0.22em] text-slate-500">
-                        <span>Accessible</span>
-                        <span>Obscure</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.04] p-4">
-                    <p className="text-xs uppercase tracking-[0.28em] text-slate-500">Discovery prompt</p>
-                    <p className="mt-3 text-sm leading-6 text-slate-200">{query}</p>
-                    <p className="mt-3 text-[11px] uppercase tracking-[0.24em] text-slate-500">
-                      {describeSeedPool(filters)}
+                    <p className="font-mono text-xs text-slate-400">
+                      {movies.length.toString().padStart(2, "0")} / {totalMatches.toString().padStart(2, "0")} loaded
                     </p>
                   </div>
 
-                  <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                    <motion.button
-                      animate={{
-                        boxShadow: `0 0 ${28 + intensity}px rgba(229, 9, 20, ${0.14 + intensity / 420})`
-                      }}
-                      className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-cinema-red px-5 py-4 font-bold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
-                      disabled={loading}
-                      onClick={findMovies}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}
-                      Find my Match
-                    </motion.button>
-                    <button
-                      className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-4 font-semibold text-slate-200 transition hover:border-white/20 hover:bg-white/[0.08]"
-                      onClick={surpriseMe}
-                    >
-                      <Shuffle className="h-4 w-4 text-cinema-blue" />
-                      Surprise Me
-                    </button>
-                  </div>
+                  {movies.length ? (
+                    <div className="flex-1 space-y-4 overflow-y-auto pr-2">
+                      {movies.map((movie) => (
+                        <VerticalMovieCard key={movie.id} movie={movie} />
+                      ))}
+                    </div>
+                  ) : (
+                    <EmptyState
+                      description="Your platform filter and emotional mix are unusually specific. Reset the night with a wildcard pick."
+                      title="No matches for this specific mood"
+                      onSurprise={surpriseMe}
+                    />
+                  )}
 
-                  {error ? <p className="mt-4 text-sm text-red-300">{error}</p> : null}
+                  {nextCursor ? (
+                    <div className="mt-5 flex justify-center">
+                      <button
+                        className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.05] px-5 py-3 font-semibold text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={loadingMore || loading}
+                        onClick={loadMore}
+                      >
+                        {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-cinema-blue" />}
+                        Load more films
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>
           </div>
 
-          <section className="mt-10">
+          <section className="mt-10 lg:hidden">
             <div className="mb-4 flex items-end justify-between gap-4">
               <div>
                 <p className="text-xs uppercase tracking-[0.28em] text-slate-500">Results</p>
@@ -686,6 +725,60 @@ function MovieCard({ movie, mobile = false, onSkip }: { movie: Movie; mobile?: b
               {movie.sourceLists[0] || "Letterboxd seed"}
             </p>
           </div>
+        </div>
+      </div>
+    </motion.article>
+  );
+}
+
+function VerticalMovieCard({ movie }: { movie: Movie }) {
+  const countryLabel = movie.countries.length ? movie.countries.join(" / ") : "Global";
+
+  return (
+    <motion.article
+      className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/[0.04]"
+      transition={{ type: "spring", stiffness: 240, damping: 24 }}
+      whileHover={{ scale: 1.01, y: -4 }}
+    >
+      <div className="grid gap-4 p-4 sm:grid-cols-[8.5rem_minmax(0,1fr)]">
+        <div className="relative aspect-[0.72] overflow-hidden rounded-[1.25rem] border border-white/10">
+          <PosterArt movie={movie} />
+        </div>
+
+        <div className="min-w-0">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h4 className="truncate text-xl font-black text-white">{movie.title}</h4>
+              <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.22em] text-slate-400">
+                {countryLabel} / {movie.year} / {movie.rating.toFixed(1)}
+              </p>
+            </div>
+            <PlatformBadge name={movie.provider} />
+          </div>
+
+          <p className="mt-4 max-h-[4.5rem] overflow-hidden text-sm leading-6 text-slate-200">{movie.matchReason}</p>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {movie.sourceLists.slice(0, 2).map((source) => (
+              <SourceBadge key={source} label={source} />
+            ))}
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {movie.availability.slice(0, 3).map((item) => (
+              <PlatformBadge key={item} name={item} />
+            ))}
+          </div>
+
+          <a
+            className="mt-5 inline-flex items-center justify-center gap-2 rounded-2xl bg-cinema-red px-4 py-3 text-sm font-bold text-white transition hover:bg-red-500"
+            href={movie.watchUrl}
+            rel="noreferrer"
+            target="_blank"
+          >
+            <Play className="h-4 w-4 fill-white" />
+            Watch Now
+          </a>
         </div>
       </div>
     </motion.article>
