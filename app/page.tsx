@@ -512,7 +512,7 @@ export default function Home() {
                       </button>
                     </div>
                   ) : null}
-                </div>
+                </section>
               </div>
             </div>
           </div>
