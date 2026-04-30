@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: #050505;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(circle at 15% 10%, rgba(229, 9, 20, 0.16), transparent 30rem),
+    radial-gradient(circle at 88% 18%, rgba(0, 209, 255, 0.16), transparent 28rem),
+    linear-gradient(180deg, #050505 0%, #09090b 48%, #050505 100%);
+  color: #f8fafc;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.vertical-slider {
+  writing-mode: bt-lr;
+  -webkit-appearance: slider-vertical;
+  appearance: slider-vertical;
+  accent-color: var(--slider-color);
+}
+
+.poster-mask {
+  mask-image: linear-gradient(90deg, transparent, black 6%, black 94%, transparent);
+}
