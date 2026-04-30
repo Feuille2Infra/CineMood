@@ -633,42 +633,69 @@ const movieObscurity: Record<string, number> = {
 };
 
 const movieSourceLists: Record<string, string[]> = {
-  "603": ["Letterboxd Top 500", "Top 250 Science Fiction"],
-  "496243": ["Letterboxd Top 500", "Top 100 South Korean Films"],
+  "603": ["Feuille2Cedric 2025", "50 Films pour Lucas", "TikTok Guess the Movie"],
+  "496243": ["100 Movies with Issa", "Feuille2Cedric 2025", "Top Bong Joon-ho"],
   "13": ["Letterboxd Top 500"],
-  "550": ["Letterboxd Most Fans"],
-  "157336": ["Top 250 Science Fiction"],
-  "76341": ["Letterboxd Most Fans"],
+  "550": ["50 Films pour Lucas", "TikTok Guess the Movie"],
+  "157336": ["50 Films pour Lucas", "TikTok Guess the Movie"],
+  "76341": ["100 Movies with Issa", "Collection DVD Blu-ray 4K"],
   "329865": ["Top 250 Science Fiction"],
   "244786": ["Letterboxd Top 500"],
   "49047": ["Top 250 Science Fiction"],
-  "8587": ["Letterboxd Top 500"],
-  "862": ["Letterboxd Top 500"],
+  "8587": ["Feuille2Cedric 2024"],
+  "862": ["Top Pixar"],
   "637": ["Top 100 Italian Films"],
-  "27205": ["Top 250 Science Fiction"],
-  "106646": ["Letterboxd Most Fans"],
-  "49026": ["Letterboxd Most Fans"],
-  "1124": ["World Cinema Essentials"],
-  "120": ["Letterboxd Top 500"],
-  "313369": ["Modern Classics"],
+  "27205": ["50 Films pour Lucas"],
+  "106646": ["50 Films pour Lucas", "Top Martin Scorsese"],
+  "49026": ["Feuille2Cedric 2025"],
+  "1124": ["100 Movies with Issa", "Feuille2Cedric 2025", "TikTok Guess the Movie"],
+  "120": ["Feuille2Cedric 2024", "Feuille2Cedric 2025", "50 Films pour Lucas"],
+  "313369": ["100 Movies with Issa"],
   "335984": ["Top 250 Science Fiction", "Top 100 Underseen Films"],
-  "11324": ["World Cinema Essentials"],
-  "807": ["Letterboxd Canon"],
+  "11324": ["50 Films pour Lucas", "Top Martin Scorsese"],
+  "807": ["Feuille2Cedric 2024", "50 Films pour Lucas"],
   "12": ["Blockbuster Essentials"],
-  "1578": ["Top 100 Underseen Films"],
-  "640": ["Letterboxd Canon"],
+  "1578": ["100 Movies with Issa", "Feuille2Cedric 2025", "Feuille2Cedric Cigarets", "Top Martin Scorsese"],
+  "640": ["50 Films pour Lucas"],
   "510": ["Letterboxd Top 500"],
-  "8078": ["Top 50 Underseen Horror Films"],
+  "8078": ["Feuille2Cedric 2025", "Alien Movies Ranking", "Feuille2Cedric Top 100", "Top Ridley Scott"],
   "37165": ["World Cinema Essentials"],
-  "843": ["Top 100 Underseen Films"],
-  "1398": ["Top 100 Underseen Films"],
-  "334533": ["Top 100 Underseen Films"],
-  "48450": ["Top 100 Underseen Films", "Top 100 Taiwanese Films"],
+  "843": ["100 Movies with Issa", "Feuille2Cedric 2025", "TikTok Guess the Movie"],
+  "1398": ["100 Movies with Issa v2", "Feuille2Cedric 2026", "Feuille2Cedric Cigarets", "Feuille2Cedric Top 100"],
+  "334533": ["Archive List"],
+  "48450": ["Collection DVD Blu-ray 4K"],
   "10376": ["Top 100 Underseen Films"],
   "26617": ["Top 100 Underseen Films"],
-  "11423": ["Top 100 South Korean Films", "Top 100 Underseen Films"],
-  "14537": ["Letterboxd Top 500", "Top 100 Japanese Films"],
-  "406": ["Top 100 Underseen Films"]
+  "11423": ["100 Movies with Issa", "Feuille2Cedric 2025", "Top Bong Joon-ho"],
+  "14537": ["100 Movies with Issa v2"],
+  "406": ["TikTok Guess the Movie"]
+};
+
+const moviePersonalRatings: Record<string, number> = {
+  "8078": 4,
+  "640": 3,
+  "550": 3,
+  "12": 3.5,
+  "13": 0.5,
+  "843": 3.5,
+  "27205": 1.5,
+  "157336": 3.5,
+  "406": 4,
+  "11423": 4,
+  "496243": 4,
+  "1578": 4,
+  "807": 4,
+  "11324": 1.5,
+  "1398": 4.5,
+  "49026": 3.5,
+  "8587": 3.5,
+  "120": 4,
+  "603": 3.5,
+  "1124": 2,
+  "37165": 4,
+  "106646": 4,
+  "862": 3,
+  "244786": 3.5
 };
 
 export function defaultRecommendations(): SearchResponse {
@@ -706,8 +733,9 @@ export function localRecommend(
       const tagBonus = getTagBonus(movie.tags, normalizedMood);
       const obscurityBonus = 28 - Math.abs(obscurity - filters.obscurity) * 0.68;
       const sourceBonus = getSourceBonus(movie.id, filters);
+      const personalTasteBonus = getPersonalTasteBonus(movie.id);
       const providerBonus = selectedPlatforms.length ? (matchingProviders.length ? 18 : -26) : 0;
-      const score = 140 - distance + tagBonus + providerBonus + obscurityBonus + sourceBonus;
+      const score = 140 - distance + tagBonus + providerBonus + obscurityBonus + sourceBonus + personalTasteBonus;
 
       return {
         movie: {
@@ -891,6 +919,10 @@ function getMovieSourceLists(movieId: string) {
   return movieSourceLists[movieId] || ["Letterboxd Top 500"];
 }
 
+function getMoviePersonalRating(movieId: string) {
+  return moviePersonalRatings[movieId] ?? null;
+}
+
 function matchesCountry(countries: string[], selectedCountry: string) {
   return selectedCountry === "any" ? true : countries.includes(selectedCountry);
 }
@@ -940,6 +972,31 @@ function getSourceBonus(movieId: string, filters: DiscoveryFilters) {
   }
 
   return bonus;
+}
+
+function getPersonalTasteBonus(movieId: string) {
+  const rating = getMoviePersonalRating(movieId);
+  if (rating === null) {
+    return 0;
+  }
+
+  if (rating >= 4.5) {
+    return 22;
+  }
+  if (rating >= 4) {
+    return 16;
+  }
+  if (rating >= 3.5) {
+    return 10;
+  }
+  if (rating <= 1.5) {
+    return -18;
+  }
+  if (rating <= 2) {
+    return -10;
+  }
+
+  return 2;
 }
 
 function matchesObscurity(movieObscurity: number, selectedObscurity: number) {
