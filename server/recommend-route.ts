@@ -21,6 +21,7 @@ type MovieResult = {
   title: string;
   year: string;
   countries: string[];
+  sourceLists: string[];
   poster: string;
   overview: string;
   matchReason: string;
@@ -40,13 +41,14 @@ export async function POST(request: Request) {
   const canUseLiveDiscovery = Boolean(process.env.TMDB_API_KEY) && (platforms.length === 0 || Boolean(process.env.WATCHMODE_API_KEY));
 
   const querySpec = await createQuerySpec(mood, platforms, filters);
-  const movies = canUseLiveDiscovery
+  const liveMovies = canUseLiveDiscovery
     ? await searchTmdb(querySpec, platforms, skipped)
-    : localResults.movies;
+    : [];
+  const movies = localResults.movies.length ? localResults.movies : liveMovies;
 
   return NextResponse.json({
-    query: querySpec.query,
-    movies: movies.length ? movies : localResults.movies
+    query: localResults.query,
+    movies
   });
 }
 
@@ -206,6 +208,7 @@ async function searchTmdb(
         title: movie.title,
         year: movie.release_date?.slice(0, 4) || "Movie",
         countries: spec.country ? [spec.country] : [],
+        sourceLists: ["TMDB discovery fallback"],
         poster: `https://image.tmdb.org/t/p/w780${movie.poster_path}`,
         overview: movie.overview || "",
         matchReason: buildReason(spec),

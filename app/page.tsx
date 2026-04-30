@@ -89,7 +89,10 @@ export default function Home() {
       applyResults(data);
     } catch {
       const data = localRecommend(nextMood, nextPlatforms, nextSkipped, nextFilters);
-      applyResults(data, !data.movies.length ? "No matches for this specific mood." : "Live APIs unavailable, using curated mood matching.");
+      applyResults(
+        data,
+        !data.movies.length ? "No matches for this specific mood." : "Live APIs unavailable, using Letterboxd-seeded mood matching."
+      );
     } finally {
       setLoading(false);
     }
@@ -376,6 +379,9 @@ export default function Home() {
                   <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.04] p-4">
                     <p className="text-xs uppercase tracking-[0.28em] text-slate-500">Discovery prompt</p>
                     <p className="mt-3 text-sm leading-6 text-slate-200">{query}</p>
+                    <p className="mt-3 text-[11px] uppercase tracking-[0.24em] text-slate-500">
+                      {describeSeedPool(filters)}
+                    </p>
                   </div>
 
                   <div className="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -534,6 +540,7 @@ function FilmStrip({ children }: { children: ReactNode }) {
 
 function MovieCard({ movie, mobile = false, onSkip }: { movie: Movie; mobile?: boolean; onSkip?: () => void }) {
   const countryLabel = movie.countries.length ? movie.countries.join(" / ") : "Global";
+  const featuredSources = movie.sourceLists.slice(0, 3);
 
   return (
     <motion.article
@@ -556,6 +563,12 @@ function MovieCard({ movie, mobile = false, onSkip }: { movie: Movie; mobile?: b
           <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.22em] text-slate-400">
             {countryLabel} / {movie.year}
           </p>
+          <p className="mt-4 text-[11px] uppercase tracking-[0.26em] text-cinema-blue">Seeded from</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {featuredSources.map((source) => (
+              <SourceBadge key={source} label={source} />
+            ))}
+          </div>
           <div className="mt-4 flex flex-wrap gap-2">
             {movie.availability.map((item) => (
               <PlatformBadge key={item} name={item} />
@@ -588,10 +601,29 @@ function MovieCard({ movie, mobile = false, onSkip }: { movie: Movie; mobile?: b
             <p className="mt-2 font-mono text-xs uppercase tracking-[0.24em] text-slate-300">
               {countryLabel} / {movie.year} / {movie.rating.toFixed(1)}
             </p>
+            <p className="mt-3 truncate text-[11px] uppercase tracking-[0.22em] text-cinema-blue/90">
+              {movie.sourceLists[0] || "Letterboxd seed"}
+            </p>
           </div>
         </div>
       </div>
     </motion.article>
+  );
+}
+
+function SourceBadge({ label }: { label: string }) {
+  const badgeStyle = label.includes("Feuille2Cedric")
+    ? "border-red-400/20 bg-red-500/20 text-red-100"
+    : label.includes("Underseen")
+      ? "border-cyan-400/20 bg-cyan-500/20 text-cyan-100"
+      : label.includes("Letterboxd")
+        ? "border-amber-400/20 bg-amber-500/20 text-amber-100"
+        : "border-white/10 bg-white/10 text-slate-100";
+
+  return (
+    <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${badgeStyle}`}>
+      {label}
+    </span>
   );
 }
 
@@ -623,7 +655,7 @@ function PosterArt({ movie }: { movie: Movie }) {
   if (failed) {
     return (
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,209,255,0.24),_transparent_42%),linear-gradient(160deg,_rgba(229,9,20,0.26),_rgba(5,5,5,0.96)_70%)]">
-        <div className="absolute inset-x-5 top-5 text-[11px] uppercase tracking-[0.28em] text-slate-300">Curated pick</div>
+        <div className="absolute inset-x-5 top-5 text-[11px] uppercase tracking-[0.28em] text-slate-300">Letterboxd seed</div>
         <div className="absolute inset-x-5 bottom-24">
           <p className="text-3xl font-black leading-tight text-white">{movie.title}</p>
           <p className="mt-3 text-sm leading-6 text-slate-300">{movie.overview}</p>
@@ -678,4 +710,12 @@ function describeMood(mood: Record<MoodKey, number>) {
   const pressure = mood.stress > 66 ? "high pressure" : mood.stress < 34 ? "softly paced" : "gently tense";
 
   return `${pace}, ${complexity}, ${tone}, ${pressure}.`;
+}
+
+function describeSeedPool(filters: DiscoveryFilters) {
+  if (filters.obscurity > 68) {
+    return "Seed pool: Letterboxd underseen lists, world-cinema deep cuts, and Feuille2Cedric picks.";
+  }
+
+  return "Seed pool: Letterboxd canon, major community lists, and Feuille2Cedric picks.";
 }

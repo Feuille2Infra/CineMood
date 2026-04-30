@@ -13,6 +13,7 @@ export type Movie = {
   title: string;
   year: string;
   countries: string[];
+  sourceLists: string[];
   poster: string;
   overview: string;
   matchReason: string;
@@ -23,7 +24,7 @@ export type Movie = {
   rating: number;
 };
 
-type CuratedMovie = Omit<Movie, "provider" | "matchReason" | "availability" | "countries"> & {
+type CuratedMovie = Omit<Movie, "provider" | "matchReason" | "availability" | "countries" | "sourceLists"> & {
   providers: string[];
   moodProfile: Mood;
   tags: string[];
@@ -628,6 +629,45 @@ const movieObscurity: Record<string, number> = {
   "406": 68
 };
 
+const movieSourceLists: Record<string, string[]> = {
+  "603": ["Letterboxd Top 500", "Top 250 Science Fiction"],
+  "496243": ["Letterboxd Top 500", "Top 100 South Korean Films"],
+  "13": ["Feuille2Cedric Top 100", "Letterboxd Top 500"],
+  "550": ["Feuille2Cedric Cigarets", "Letterboxd Most Fans"],
+  "157336": ["Feuille2Cedric Top 100", "Top 250 Science Fiction"],
+  "76341": ["Letterboxd Most Fans"],
+  "329865": ["Top 250 Science Fiction", "Feuille2Cedric Top 100"],
+  "244786": ["Letterboxd Top 500"],
+  "49047": ["Top 250 Science Fiction"],
+  "8587": ["Letterboxd Top 500"],
+  "862": ["Letterboxd Top 500"],
+  "637": ["Top 100 Italian Films"],
+  "27205": ["Feuille2Cedric Top 100", "Top 250 Science Fiction"],
+  "106646": ["Feuille2Cedric Cigarets", "Letterboxd Most Fans"],
+  "49026": ["Feuille2Cedric Top 100", "Letterboxd Most Fans"],
+  "1124": ["Feuille2Cedric Top 100"],
+  "120": ["Letterboxd Top 500"],
+  "313369": ["Feuille2Cedric Top 100"],
+  "335984": ["Top 250 Science Fiction", "Top 100 Underseen Films"],
+  "11324": ["Feuille2Cedric Top 100"],
+  "807": ["Feuille2Cedric Top 100"],
+  "12": ["Feuille2Cedric 2025"],
+  "1578": ["Top 100 Underseen Films"],
+  "640": ["Feuille2Cedric Top 100"],
+  "510": ["Letterboxd Top 500"],
+  "8078": ["Top 50 Underseen Horror Films"],
+  "37165": ["Feuille2Cedric Top 100"],
+  "843": ["Feuille2Cedric Cigarets", "Top 100 Underseen Films"],
+  "1398": ["Top 100 Underseen Films"],
+  "334533": ["Top 100 Underseen Films", "Feuille2Cedric Cigarets"],
+  "48450": ["Top 100 Underseen Films", "Top 100 Taiwanese Films"],
+  "10376": ["Top 100 Underseen Films"],
+  "26617": ["Top 100 Underseen Films"],
+  "11423": ["Top 100 South Korean Films", "Top 100 Underseen Films"],
+  "14537": ["Letterboxd Top 500", "Top 100 Japanese Films"],
+  "406": ["Feuille2Cedric Cigarets", "Top 100 Underseen Films"]
+};
+
 export function defaultRecommendations(): SearchResponse {
   return localRecommend(defaultMood, defaultPlatforms, [], defaultFilters);
 }
@@ -659,8 +699,9 @@ export function localRecommend(
 
       const tagBonus = getTagBonus(movie.tags, normalizedMood);
       const obscurityBonus = 28 - Math.abs(obscurity - filters.obscurity) * 0.68;
+      const sourceBonus = getSourceBonus(movie.id, filters);
       const providerBonus = selectedPlatforms.length ? (matchingProviders.length ? 18 : -26) : 0;
-      const score = 140 - distance + tagBonus + providerBonus + obscurityBonus;
+      const score = 140 - distance + tagBonus + providerBonus + obscurityBonus + sourceBonus;
 
       return {
         movie: {
@@ -668,6 +709,7 @@ export function localRecommend(
           title: movie.title,
           year: movie.year,
           countries: getMovieCountries(movie.id),
+          sourceLists: getMovieSourceLists(movie.id),
           poster: movie.poster,
           overview: movie.overview,
           matchReason: buildReason(movie, normalizedMood),
@@ -727,8 +769,12 @@ function buildQuery(mood: Mood, selectedPlatforms: string[], filters: DiscoveryF
   const eraSuffix = filters.era !== "any" ? ` in ${getEraLabel(filters.era)}` : "";
   const obscuritySuffix =
     filters.obscurity > 72 ? " with truly obscure deep cuts" : filters.obscurity > 48 ? " with off-path discoveries" : "";
+  const sourceSuffix =
+    filters.obscurity > 60
+      ? " seeded from underseen Letterboxd lists and Feuille2Cedric picks"
+      : " seeded from Letterboxd canon and Feuille2Cedric picks";
 
-  return `${stress} ${happiness} ${pace} movies with ${complexity} storytelling${countrySuffix}${eraSuffix}${platformSuffix}${obscuritySuffix}`;
+  return `${stress} ${happiness} ${pace} movies with ${complexity} storytelling${countrySuffix}${eraSuffix}${platformSuffix}${obscuritySuffix}${sourceSuffix}`;
 }
 
 function buildReason(movie: CuratedMovie, mood: Mood) {
@@ -831,6 +877,10 @@ function getMovieObscurity(movieId: string) {
   return movieObscurity[movieId] ?? 30;
 }
 
+function getMovieSourceLists(movieId: string) {
+  return movieSourceLists[movieId] || ["Letterboxd Top 500"];
+}
+
 function matchesCountry(countries: string[], selectedCountry: string) {
   return selectedCountry === "any" ? true : countries.includes(selectedCountry);
 }
@@ -863,4 +913,24 @@ function getCountryLabel(code: string) {
 
 function getEraLabel(value: string) {
   return eraOptions.find((option) => option.value === value)?.label.toLowerCase() || value;
+}
+
+function getSourceBonus(movieId: string, filters: DiscoveryFilters) {
+  const sources = getMovieSourceLists(movieId);
+  let bonus = 0;
+
+  if (sources.some((source) => source.includes("Feuille2Cedric"))) {
+    bonus += 18;
+  }
+  if (filters.obscurity > 60 && sources.some((source) => source.includes("Underseen"))) {
+    bonus += 16;
+  }
+  if (filters.country !== "any" && sources.some((source) => source.includes("Top 100") || source.includes("Top 50"))) {
+    bonus += 10;
+  }
+  if (filters.obscurity < 36 && sources.some((source) => source.includes("Letterboxd Top 500") || source.includes("Most Fans"))) {
+    bonus += 8;
+  }
+
+  return bonus;
 }
